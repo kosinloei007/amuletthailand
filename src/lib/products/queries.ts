@@ -1,0 +1,86 @@
+import "server-only";
+import { prisma } from "@/lib/prisma";
+
+export type ProductFilters = {
+  provinceSlugs: string[];
+  monkSlugs: string[];
+  categorySlugs: string[];
+  minPrice?: number;
+  maxPrice?: number;
+};
+
+export async function getFilteredProducts(tenantId: number, filters: ProductFilters) {
+  return prisma.product.findMany({
+    where: {
+      tenantId,
+      isActive: true,
+      ...(filters.provinceSlugs.length > 0 && { province: { slug: { in: filters.provinceSlugs } } }),
+      ...(filters.monkSlugs.length > 0 && { monk: { slug: { in: filters.monkSlugs } } }),
+      ...(filters.categorySlugs.length > 0 && { category: { slug: { in: filters.categorySlugs } } }),
+      ...((filters.minPrice !== undefined || filters.maxPrice !== undefined) && {
+        price: {
+          ...(filters.minPrice !== undefined && { gte: filters.minPrice }),
+          ...(filters.maxPrice !== undefined && { lte: filters.maxPrice }),
+        },
+      }),
+    },
+    include: {
+      province: true,
+      monk: true,
+      category: true,
+      images: { where: { imageType: "product" }, orderBy: { sortOrder: "asc" }, take: 1 },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export type FilterOption = { slug: string; label: string; count: number };
+
+export async function getFilterFacets(tenantId: number): Promise<{
+  provinces: FilterOption[];
+  monks: FilterOption[];
+  categories: FilterOption[];
+}> {
+  const [provinceGroups, monkGroups, categoryGroups] = await Promise.all([
+    prisma.product.groupBy({
+      by: ["provinceId"],
+      where: { tenantId, isActive: true, provinceId: { not: null } },
+      _count: true,
+    }),
+    prisma.product.groupBy({
+      by: ["monkId"],
+      where: { tenantId, isActive: true, monkId: { not: null } },
+      _count: true,
+    }),
+    prisma.product.groupBy({
+      by: ["categoryId"],
+      where: { tenantId, isActive: true, categoryId: { not: null } },
+      _count: true,
+    }),
+  ]);
+
+  const [provinces, monks, categories] = await Promise.all([
+    prisma.province.findMany({
+      where: { provinceId: { in: provinceGroups.map((g) => g.provinceId!) } },
+      orderBy: { nameTh: "asc" },
+    }),
+    prisma.monk.findMany({
+      where: { monkId: { in: monkGroups.map((g) => g.monkId!) } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.category.findMany({
+      where: { categoryId: { in: categoryGroups.map((g) => g.categoryId!) } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
+
+  const provinceCount = new Map(provinceGroups.map((g) => [g.provinceId, g._count]));
+  const monkCount = new Map(monkGroups.map((g) => [g.monkId, g._count]));
+  const categoryCount = new Map(categoryGroups.map((g) => [g.categoryId, g._count]));
+
+  return {
+    provinces: provinces.map((p) => ({ slug: p.slug, label: p.nameTh, count: provinceCount.get(p.provinceId) ?? 0 })),
+    monks: monks.map((m) => ({ slug: m.slug, label: m.name, count: monkCount.get(m.monkId) ?? 0 })),
+    categories: categories.map((c) => ({ slug: c.slug, label: c.name, count: categoryCount.get(c.categoryId) ?? 0 })),
+  };
+}
