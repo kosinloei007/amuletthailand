@@ -34,6 +34,25 @@ export async function getFilteredProducts(tenantId: number, filters: ProductFilt
   });
 }
 
+export async function getProductById(tenantId: number, productId: number) {
+  const product = await prisma.product.findFirst({
+    where: { productId, tenantId, isActive: true },
+    include: {
+      province: true,
+      monk: true,
+      category: true,
+      images: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+  if (!product) return null;
+
+  // รูปพระปกติขึ้นก่อนเสมอ แล้วตามด้วยรูปใบรับประกัน (ตาม query pattern ใน docs/database.md)
+  const productImages = product.images.filter((image) => image.imageType === "product");
+  const certificateImages = product.images.filter((image) => image.imageType === "certificate");
+
+  return { ...product, images: [...productImages, ...certificateImages] };
+}
+
 export type FilterOption = { slug: string; label: string; count: number };
 
 export async function getFilterFacets(tenantId: number): Promise<{
