@@ -52,6 +52,9 @@ export default async function AdminDashboardPage() {
           <Link href="/admin/member-tiers" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
             จัดการระดับสมาชิก
           </Link>
+          <Link href="/admin/vendors" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            ผู้ขาย (Marketplace)
+          </Link>
           <Link href="/admin/promotions" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
             โปรโมชั่นทั้งร้าน
           </Link>

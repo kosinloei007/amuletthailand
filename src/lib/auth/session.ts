@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 export const SESSION_COOKIE_NAME = "session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 วัน
 
-export type UserRole = "super_admin" | "tenant_admin" | "member";
+export type UserRole = "super_admin" | "tenant_admin" | "member" | "vendor";
 
 export type SessionPayload = {
   userId: number;
@@ -13,6 +13,7 @@ export type SessionPayload = {
   role: UserRole;
   email: string;
   fullName: string;
+  vendorId: number | null;
 };
 
 function getSecretKey() {

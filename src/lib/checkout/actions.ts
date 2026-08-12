@@ -65,7 +65,7 @@ export async function createOrderAction(_prevState: ActionState, formData: FormD
   });
   const productById = new Map(products.map((p) => [p.productId, p]));
 
-  const orderItemsData: { productId: number; productName: string; unitPrice: number; quantity: number }[] = [];
+  const orderItemsData: { productId: number; productName: string; vendorId: number | null; unitPrice: number; quantity: number }[] = [];
   for (const item of cartItems) {
     const product = productById.get(item.productId);
     if (!product) return { error: `ไม่พบสินค้าบางรายการในตะกร้า (id ${item.productId})` };
@@ -78,6 +78,7 @@ export async function createOrderAction(_prevState: ActionState, formData: FormD
     orderItemsData.push({
       productId: product.productId,
       productName: product.name,
+      vendorId: product.vendorId,
       unitPrice: Number(product.price),
       quantity: item.quantity,
     });

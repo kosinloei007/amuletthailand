@@ -30,8 +30,32 @@ model Tenant {
   paymentInfo      PaymentInfo?
   notifyConfig     NotifyConfig?
   orders           Order[]
+  vendors          Vendor[]
 
   @@map("Tenants")
+}
+
+// ===== Vendors (ผู้ขายหลายรายในร้านเดียว — marketplace ภายใน tenant) =====
+model Vendor {
+  vendorId      Int      @id @default(autoincrement()) @map("VendorId")
+  tenantId      Int      @map("TenantId")
+  shopName      String   @map("ShopName") @db.NVarChar(200)
+  contactName   String   @map("ContactName") @db.NVarChar(200)
+  phone         String?  @map("Phone") @db.NVarChar(20)
+  bankName      String?  @map("BankName") @db.NVarChar(100)
+  accountName   String?  @map("AccountName") @db.NVarChar(200)
+  accountNumber String?  @map("AccountNumber") @db.NVarChar(50)
+  status        String   @default("active") @map("Status") @db.NVarChar(20) // active | suspended
+  createdAt     DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+  updatedAt     DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  users      User[]
+  products   Product[]
+  orderItems OrderItem[]
+
+  @@index([tenantId])
+  @@map("Vendors")
 }
 
 // ===== Themes (ธีมของร้าน) =====
@@ -148,19 +172,22 @@ model User {
   phone        String?  @map("Phone") @db.NVarChar(20)
   passwordHash String   @map("PasswordHash") @db.NVarChar(300)
   fullName     String   @map("FullName") @db.NVarChar(200)
-  role         String   @default("member") @map("Role") @db.NVarChar(20) // super_admin | tenant_admin | member
+  role         String   @default("member") @map("Role") @db.NVarChar(20) // super_admin | tenant_admin | member | vendor
   memberTierId Int?     @map("MemberTierId") // ใช้เฉพาะ role = "member"
+  vendorId     Int?     @map("VendorId") // ใช้เฉพาะ role = "vendor"
   isActive     Boolean  @default(true) @map("IsActive")
   createdAt    DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
   updatedAt    DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
 
   tenant     Tenant?       @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
   memberTier MemberTier?   @relation(fields: [memberTierId], references: [memberTierId], onDelete: NoAction, onUpdate: NoAction)
+  vendor     Vendor?       @relation(fields: [vendorId], references: [vendorId], onDelete: NoAction, onUpdate: NoAction)
   addresses  UserAddress[]
   orders     Order[]
 
   @@index([tenantId, role])
   @@index([memberTierId])
+  @@index([vendorId])
   @@map("Users")
 }
 
@@ -189,6 +216,7 @@ model UserAddress {
 model Product {
   productId       Int      @id @default(autoincrement()) @map("ProductId")
   tenantId        Int      @map("TenantId")
+  vendorId        Int?     @map("VendorId") // NULL = สินค้าของร้าน (house product), ไม่ NULL = สินค้าของผู้ขายรายนั้น
   name            String   @map("Name") @db.NVarChar(300)
   description     String?  @map("Description") @db.NVarChar(Max)
   costPrice       Decimal? @map("CostPrice") @db.Decimal(10, 2)
@@ -206,6 +234,7 @@ model Product {
   updatedAt       DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
 
   tenant   Tenant         @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  vendor   Vendor?        @relation(fields: [vendorId], references: [vendorId], onDelete: NoAction, onUpdate: NoAction)
   province Province?      @relation(fields: [provinceId], references: [provinceId], onDelete: NoAction, onUpdate: NoAction)
   monk     Monk?          @relation(fields: [monkId], references: [monkId], onDelete: NoAction, onUpdate: NoAction)
   category Category?      @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
@@ -218,6 +247,7 @@ model Product {
   @@index([provinceId])
   @@index([monkId])
   @@index([categoryId])
+  @@index([vendorId])
   @@map("Products")
 }
 
@@ -327,11 +357,14 @@ model OrderItem {
   orderId     Int     @map("OrderId")
   productId   Int     @map("ProductId")
   productName String  @map("ProductName") @db.NVarChar(300) // เก็บชื่อ ณ เวลาซื้อ กันสินค้าถูกแก้ชื่อทีหลัง
+  vendorId    Int?    @map("VendorId") // เก็บผู้ขาย ณ เวลาซื้อ (snapshot เหมือน productName) กันกรณีสินค้าย้ายเจ้าของทีหลัง
   unitPrice   Decimal @map("UnitPrice") @db.Decimal(10, 2)
   quantity    Int     @default(1) @map("Quantity")
 
   order   Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [productId], onDelete: NoAction, onUpdate: NoAction)
+  vendor  Vendor? @relation(fields: [vendorId], references: [vendorId], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([vendorId])
   @@map("OrderItems")
 }

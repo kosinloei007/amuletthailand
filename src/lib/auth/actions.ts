@@ -12,6 +12,9 @@ function redirectForRole(role: string) {
   if (role === "tenant_admin" || role === "super_admin") {
     redirect("/admin");
   }
+  if (role === "vendor") {
+    redirect("/vendor");
+  }
   redirect("/account");
 }
 
@@ -36,9 +39,10 @@ export async function loginAction(_prevState: ActionState, formData: FormData): 
   await setSessionCookie({
     userId: user.userId,
     tenantId: user.tenantId,
-    role: user.role as "super_admin" | "tenant_admin" | "member",
+    role: user.role as "super_admin" | "tenant_admin" | "member" | "vendor",
     email: user.email,
     fullName: user.fullName,
+    vendorId: user.vendorId,
   });
 
   redirectForRole(user.role);
@@ -90,6 +94,7 @@ export async function registerAction(_prevState: ActionState, formData: FormData
     role: "member",
     email: user.email,
     fullName: user.fullName,
+    vendorId: null,
   });
 
   redirect("/account");
@@ -106,4 +111,12 @@ export async function requireSession() {
     redirect("/login");
   }
   return session;
+}
+
+export async function requireVendor() {
+  const session = await requireSession();
+  if (session.role !== "vendor" || !session.vendorId) {
+    redirect("/account");
+  }
+  return session as typeof session & { vendorId: number };
 }

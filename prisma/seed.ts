@@ -8,6 +8,7 @@ import { categories } from "./seed-data/categories";
 import { products } from "./seed-data/products";
 import { memberTiers } from "./seed-data/member-tiers";
 import { DEV_PASSWORD, users } from "./seed-data/users";
+import { vendors } from "./seed-data/vendors";
 
 async function seedProvinces() {
   for (const province of provinces) {
@@ -221,6 +222,82 @@ async function seedUsers(tenantId: number) {
   console.log(`Seeded ${users.length} users (dev password: "${DEV_PASSWORD}")`);
 }
 
+async function seedVendors(tenantId: number) {
+  const allProvinces = await prisma.province.findMany({ select: { provinceId: true, slug: true } });
+  const provinceIdBySlug = new Map(allProvinces.map((p) => [p.slug, p.provinceId]));
+
+  const allMonks = await prisma.monk.findMany({ select: { monkId: true, slug: true } });
+  const monkIdBySlug = new Map(allMonks.map((m) => [m.slug, m.monkId]));
+
+  const allCategories = await prisma.category.findMany({ select: { categoryId: true, slug: true } });
+  const categoryIdBySlug = new Map(allCategories.map((c) => [c.slug, c.categoryId]));
+
+  const passwordHash = await hashPassword(DEV_PASSWORD);
+
+  for (const vendorSeed of vendors) {
+    const existingVendor = await prisma.vendor.findFirst({ where: { tenantId, shopName: vendorSeed.shopName } });
+    const vendorData = {
+      contactName: vendorSeed.contactName,
+      phone: vendorSeed.phone,
+      bankName: vendorSeed.bankName,
+      accountName: vendorSeed.accountName,
+      accountNumber: vendorSeed.accountNumber,
+    };
+    const vendor = existingVendor
+      ? await prisma.vendor.update({ where: { vendorId: existingVendor.vendorId }, data: vendorData })
+      : await prisma.vendor.create({ data: { tenantId, shopName: vendorSeed.shopName, ...vendorData } });
+
+    await prisma.user.upsert({
+      where: { email: vendorSeed.email },
+      update: { fullName: vendorSeed.contactName, role: "vendor", tenantId, vendorId: vendor.vendorId },
+      create: {
+        tenantId,
+        email: vendorSeed.email,
+        phone: vendorSeed.phone,
+        passwordHash,
+        fullName: vendorSeed.contactName,
+        role: "vendor",
+        vendorId: vendor.vendorId,
+      },
+    });
+
+    for (const product of vendorSeed.products) {
+      const provinceId = provinceIdBySlug.get(product.provinceSlug);
+      const monkId = monkIdBySlug.get(product.monkSlug);
+      const categoryId = categoryIdBySlug.get(product.categorySlug);
+      if (!provinceId) throw new Error(`ไม่พบจังหวัด slug="${product.provinceSlug}" สำหรับสินค้าผู้ขาย "${product.name}"`);
+      if (!monkId) throw new Error(`ไม่พบหลวงพ่อ slug="${product.monkSlug}" สำหรับสินค้าผู้ขาย "${product.name}"`);
+      if (!categoryId) throw new Error(`ไม่พบหมวดหมู่ slug="${product.categorySlug}" สำหรับสินค้าผู้ขาย "${product.name}"`);
+
+      const existing = await prisma.product.findFirst({ where: { tenantId, vendorId: vendor.vendorId, name: product.name } });
+      const data = {
+        tenantId,
+        vendorId: vendor.vendorId,
+        name: product.name,
+        description: product.description,
+        costPrice: product.costPrice,
+        price: product.price,
+        stock: product.stock,
+        provinceId,
+        monkId,
+        categoryId,
+        templeName: product.templeName,
+        era: product.era,
+      };
+
+      const saved = existing
+        ? await prisma.product.update({ where: { productId: existing.productId }, data })
+        : await prisma.product.create({ data });
+
+      await prisma.productImage.deleteMany({ where: { productId: saved.productId } });
+      await prisma.productImage.create({
+        data: { productId: saved.productId, imageUrl: product.imageUrl, imageType: "product", sortOrder: 0 },
+      });
+    }
+  }
+  console.log(`Seeded ${vendors.length} vendors (login password: "${DEV_PASSWORD}")`);
+}
+
 async function main() {
   await seedProvinces();
   await seedMonks();
@@ -230,6 +307,7 @@ async function main() {
   await seedProducts(tenant.tenantId);
   await seedMemberTiers(tenant.tenantId);
   await seedUsers(tenant.tenantId);
+  await seedVendors(tenant.tenantId);
 }
 
 main()

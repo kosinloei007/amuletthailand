@@ -18,9 +18,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/account", request.url));
   }
 
+  if (pathname.startsWith("/vendor") && session.role !== "vendor") {
+    return NextResponse.redirect(new URL("/account", request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/account/:path*"],
+  matcher: ["/admin/:path*", "/account/:path*", "/vendor/:path*"],
 };

@@ -1,6 +1,14 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 
+// สินค้าที่แสดงหน้าร้านต้องเป็นของร้านเอง (vendorId เป็น null) หรือของผู้ขายที่ยังไม่ถูกระงับ
+// ใช้ spread ตัวนี้เข้า where ของทุก query ที่ query สินค้าฝั่ง storefront (ไม่ใช้กับฝั่ง admin/vendor เอง)
+export const visibleVendorFilter = {
+  OR: [{ vendorId: null }, { vendor: { status: { not: "suspended" } } }],
+};
+
+const vendorShopNameInclude = { vendor: { select: { shopName: true } } } as const;
+
 export type ProductFilters = {
   provinceSlugs: string[];
   monkSlugs: string[];
@@ -14,6 +22,7 @@ export async function getFilteredProducts(tenantId: number, filters: ProductFilt
     where: {
       tenantId,
       isActive: true,
+      ...visibleVendorFilter,
       ...(filters.provinceSlugs.length > 0 && { province: { slug: { in: filters.provinceSlugs } } }),
       ...(filters.monkSlugs.length > 0 && { monk: { slug: { in: filters.monkSlugs } } }),
       ...(filters.categorySlugs.length > 0 && { category: { slug: { in: filters.categorySlugs } } }),
@@ -29,6 +38,7 @@ export async function getFilteredProducts(tenantId: number, filters: ProductFilt
       monk: true,
       category: true,
       images: { where: { imageType: "product" }, orderBy: { sortOrder: "asc" }, take: 1 },
+      ...vendorShopNameInclude,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -36,12 +46,13 @@ export async function getFilteredProducts(tenantId: number, filters: ProductFilt
 
 export async function getProductById(tenantId: number, productId: number) {
   const product = await prisma.product.findFirst({
-    where: { productId, tenantId, isActive: true },
+    where: { productId, tenantId, isActive: true, ...visibleVendorFilter },
     include: {
       province: true,
       monk: true,
       category: true,
       images: { orderBy: { sortOrder: "asc" } },
+      ...vendorShopNameInclude,
     },
   });
   if (!product) return null;
@@ -63,17 +74,17 @@ export async function getFilterFacets(tenantId: number): Promise<{
   const [provinceGroups, monkGroups, categoryGroups] = await Promise.all([
     prisma.product.groupBy({
       by: ["provinceId"],
-      where: { tenantId, isActive: true, provinceId: { not: null } },
+      where: { tenantId, isActive: true, provinceId: { not: null }, ...visibleVendorFilter },
       _count: true,
     }),
     prisma.product.groupBy({
       by: ["monkId"],
-      where: { tenantId, isActive: true, monkId: { not: null } },
+      where: { tenantId, isActive: true, monkId: { not: null }, ...visibleVendorFilter },
       _count: true,
     }),
     prisma.product.groupBy({
       by: ["categoryId"],
-      where: { tenantId, isActive: true, categoryId: { not: null } },
+      where: { tenantId, isActive: true, categoryId: { not: null }, ...visibleVendorFilter },
       _count: true,
     }),
   ]);

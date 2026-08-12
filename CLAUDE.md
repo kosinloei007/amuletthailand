@@ -80,6 +80,18 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - `/admin/orders/[id]` แสดง section "การชำระผ่าน Payment Gateway (จำลอง)" (gatewayName/ref/status/เวลา) แทนที่ section สลิปโดยอัตโนมัติเมื่อออร์เดอร์นั้นมี `PaymentTransaction` ผูกอยู่ — admin ไม่ต้องกดยืนยันสลิปเองสำหรับออร์เดอร์ที่จ่ายผ่าน gateway เพราะยืนยันไปแล้วตอนสร้างออร์เดอร์
 - ทดสอบ end-to-end จริงแล้วใน browser (2026-08-12): เปิด toggle → checkout เลือก gateway → ยืนยันทันทีไม่ต้องรอตรวจสลิป → เช็คใน `/admin/orders` เห็นสถานะ "ยืนยันแล้ว" ทันที → เปิดดู detail เห็น transaction ref/status ถูกต้อง; flow โอนเงิน+แนบสลิปเดิมยังทำงานปกติไม่มี regression
 
+**ระบบผู้ขายหลายราย (marketplace) ที่ทำไว้แล้ว** (roadmap ข้อ 8, เสร็จแล้ว 2026-08-12, ดู [docs/marketplace-vendors.md](./docs/marketplace-vendors.md) ก่อนแก้ไขส่วนนี้เสมอ):
+- เลือก implement เป็น **"หลายผู้ขายในร้านเดียว"** ตามที่ผู้ใช้ระบุ (คล้าย Shopee/Lazada ที่มีร้านย่อยหลายร้านในแพลตฟอร์มเดียว) — ไม่ใช่การขยาย multi-tenant เดิม และไม่ใช่แค่เพิ่ม role staff กลางๆ
+- Schema เพิ่ม model `Vendor` (ผูก tenant, มี `status` active/suspended, เก็บข้อมูลบัญชีธนาคารไว้อ้างอิงจ่ายเงิน manual) + `Products.VendorId`/`Users.VendorId`/`OrderItems.VendorId` (nullable ทั้งหมด — `NULL` = ของร้านเอง)
+- Role ใหม่ `vendor` ใน `Users.Role`, session payload เพิ่ม `vendorId`, ป้องกันเส้นทาง `/vendor/**` ด้วย `src/proxy.ts` (ต้อง login และเป็น role `vendor` เท่านั้น), มี `requireVendor()` helper ใน `src/lib/auth/actions.ts`
+- **แอดมิน tenant สร้างบัญชี vendor เองเท่านั้น** ที่ `/admin/vendors` (ไม่มี public signup กันสแปม) — สร้าง `Vendor` + `User` พร้อมกันในทรานแซกชันเดียว, ปุ่มระงับ/เปิดใช้งานแทนการลบถาวร
+- Vendor จัดการสินค้าตัวเองที่ `/vendor/products` (`src/lib/vendor-products/actions.ts` เช็ค `vendorId` ทุก action กัน vendor แก้สินค้า vendor อื่น) — ฟอร์มสินค้ารองรับรูปเดียวผ่าน URL เท่านั้น (ยังไม่มีอัปโหลดไฟล์/รูปใบรับประกันแยกเหมือนสินค้าที่ seed ไว้)
+- **สินค้าของ vendor ที่ถูกระงับจะถูกซ่อนจากหน้าร้านทันที** ผ่าน `visibleVendorFilter` (export จาก `src/lib/products/queries.ts`) — ต้อง spread เข้า `where` ของทุก query สินค้าฝั่ง storefront เสมอ (`products/queries.ts`, `home/queries.ts`, `provinces/queries.ts`, `monks/queries.ts` ใช้ครบแล้ว) ถ้าเพิ่ม query สินค้าฝั่ง storefront ใหม่ห้ามลืมใส่
+- **ไม่มีการแยกออร์เดอร์ตาม vendor** — cart ที่มีสินค้าหลาย vendor ปนกันยังสร้างเป็น `Order` เดียว จ่ายเงิน/จัดส่งเป็นก้อนเดียวเหมือนเดิม; `OrderItems.VendorId` แค่ snapshot ผู้ขาย ณ เวลาซื้อไว้ (เหมือน `ProductName`) ให้ vendor ดูออร์เดอร์ย้อนหลังของตัวเองได้ที่ `/vendor/orders` (อ่านอย่างเดียว กรอง item เฉพาะของตัวเอง แก้สถานะออร์เดอร์ไม่ได้ — ยังเป็นหน้าที่ tenant_admin เหมือนเดิม)
+- **ไม่มีระบบคอมมิชชั่น/payout อัตโนมัติ** — เก็บแค่บัญชีธนาคาร vendor ไว้ให้แอดมินโอนเงินเอง manual ตามที่ระบุไว้ใน docs ว่าเป็นขอบเขตที่ตัดออกตอนสร้างฟีเจอร์นี้
+- Seed ผู้ขาย demo ไว้แล้วที่ `prisma/seed-data/vendors.ts` (รัน `npx prisma db seed` เพื่อ apply — ต้องรันผ่าน `prisma db seed` ไม่ใช่ `tsx prisma/seed.ts` ตรงๆ เพราะ `.env` ถูกโหลดผ่าน `prisma.config.ts` ที่ผูกกับคำสั่งนี้เท่านั้น): login `vendor@amulet-thailand.demo` / `Passw0rd!` (ร้าน "ร้านพระเครื่องสมชาย" มีสินค้า 2 ชิ้น)
+- ทดสอบ end-to-end จริงแล้วใน browser (2026-08-12): แอดมินสร้าง vendor ใหม่ → vendor login เพิ่มสินค้า → สินค้าโชว์หน้าร้านพร้อมป้าย "ขายโดย" → ลูกค้าซื้อสินค้าผสม (ของร้าน+ของ vendor) ในออร์เดอร์เดียว → vendor เห็นเฉพาะรายการของตัวเองที่ `/vendor/orders` (990 บาท) ส่วนแอดมินเห็นออร์เดอร์เต็มทั้ง 2 รายการที่ `/admin/orders/[id]` → แอดมินระงับ vendor → จำนวนสินค้าหน้า `/products` ลดจาก 20 เหลือ 17 ทันที (สินค้าของ vendor ที่ถูกระงับหายหมด สินค้าของร้านเองไม่กระทบ)
+
 - Image: เก็บ path รูปใน object storage (S3-compatible) — ตอน dev ใช้ placeholder ก่อน
 - State/filter: URL query params เป็นหลัก (เช่น `/products?province=phitsanulok&monk=luang-pho-koon`) เพื่อให้แชร์ลิงก์กรองได้และ SEO friendly
 
@@ -94,6 +106,7 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 | [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) | Flow หน้า checkout, การแสดงบัญชี/QR โอนเงิน, แนบสลิป, ระบบแจ้งเตือน Telegram/Email, ตรวจสลิปอัตโนมัติ, ติดตามสถานะออร์เดอร์, payment gateway |
 | [docs/theming.md](./docs/theming.md) | ระบบธีม/white-label ให้แต่ละร้านปรับสี โลโก้ ได้เอง |
 | [docs/home-and-catalog.md](./docs/home-and-catalog.md) | หน้าหลัก (รวม "พระเครื่องเข้ามาใหม่"), หน้ารายการสินค้า, หน้าโปรไฟล์หลวงพ่อ/จังหวัด |
+| [docs/marketplace-vendors.md](./docs/marketplace-vendors.md) | ระบบผู้ขายหลายรายในร้านเดียว (marketplace): บทบาท vendor, การจัดการสินค้า/ผู้ขาย, การมองเห็นสินค้าบนหน้าร้าน, ขอบเขตที่ยังไม่ทำ |
 
 เวลาทำงานในหัวข้อไหน ให้เปิดไฟล์ docs ที่เกี่ยวข้องอ่านก่อนเริ่มเขียนโค้ดเสมอ
 
@@ -106,7 +119,7 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - [x] ระบบ Login แยก Admin/สมาชิก/Guest + ที่อยู่ default + ระดับสมาชิก (MemberTier) พร้อมส่วนลด/จัดส่งฟรีตามระดับ — ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md) (ครบทั้งหมดแล้ว 2026-08-12 รวมส่วนลด/จัดส่งฟรีที่ใช้จริงตอน checkout)
 - [x] ราคาขาย default จากต้นทุน (ปรับ % ได้) + โปรโมชั่นส่วนลดทั้งร้านตามช่วงเวลา — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) (โปรโมชั่นทั้งร้าน + `Tenant.defaultMarkupPercent` แก้ได้จาก `/admin/settings` เสร็จแล้ว 2026-08-12 — **แต่ยังไม่มีหน้า admin เพิ่ม/แก้สินค้า** ดังนั้น "คำนวณราคาขาย default อัตโนมัติตอนกรอกต้นทุน" ยังไม่มีจุดให้ใช้งานจริง เพราะสินค้าตอนนี้มาจาก seed script เท่านั้น รอทำตอนมีหน้าจัดการสินค้า)
 - [x] ระบบเปลี่ยนธีมร้าน — ดู [docs/theming.md](./docs/theming.md) (เสร็จแล้ว 2026-08-12 — ดูรายละเอียดที่ section "ระบบธีม" ด้านล่าง)
-- [ ] ระบบผู้ขายหลายราย (ถ้าต้องการรองรับ marketplace ไม่ใช่แค่ร้านเดียว)
+- [x] ระบบผู้ขายหลายราย — ดู [docs/marketplace-vendors.md](./docs/marketplace-vendors.md) (เสร็จแล้ว 2026-08-12 — เลือก implement เป็น "หลายผู้ขายในร้านเดียว" ตามที่ผู้ใช้ระบุ ไม่ใช่ role คั่นกลางแบบ staff ดูรายละเอียดที่ section "ระบบผู้ขายหลายราย" ด้านล่าง)
 
 ## Conventions
 
@@ -124,4 +137,4 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 5. ✅ ระบบธีม + หน้าตั้งค่าร้าน — [docs/theming.md](./docs/theming.md)
 6. ✅ ตะกร้า + checkout (รวมส่วนลด/จัดส่งฟรีสมาชิก) + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ — [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
 7. ✅ เชื่อมต่อ payment gateway — เป็น **mock/จำลอง** ตามที่ผู้ใช้ระบุ ("payment gateway ไม่ต้องใช้ให้ confirm ด้วยปุ่มที่หน้าจอเอา") ไม่ได้ต่อ Omise/2C2P จริง — ดูรายละเอียดที่ [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
-8. ระบบผู้ขายหลายราย (ถ้าต้องการ)
+8. ✅ ระบบผู้ขายหลายราย — เลือก implement เป็น "หลายผู้ขายในร้านเดียว" (marketplace ภายใน tenant เดียว คล้าย Shopee/Lazada) ตามที่ผู้ใช้ระบุ — ดูรายละเอียดที่ [docs/marketplace-vendors.md](./docs/marketplace-vendors.md)

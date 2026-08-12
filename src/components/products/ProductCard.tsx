@@ -7,6 +7,7 @@ export type ProductCardData = {
   images: { imageUrl: string }[];
   monk?: { name: string } | null;
   province?: { nameTh: string } | null;
+  vendor?: { shopName: string } | null;
 };
 
 export function ProductCard({ product, badge }: { product: ProductCardData; badge?: string }) {
@@ -38,6 +39,7 @@ export function ProductCard({ product, badge }: { product: ProductCardData; badg
           {product.province && ` · จ.${product.province.nameTh}`}
         </p>
       )}
+      {product.vendor && <p className="text-xs text-black/40">ขายโดย {product.vendor.shopName}</p>}
     </Link>
   );
 }
