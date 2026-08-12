@@ -69,6 +69,7 @@ export default async function CheckoutPage() {
                 accountNumber: paymentInfo.accountNumber,
                 promptPayId: paymentInfo.promptPayId,
                 qrImageUrl: paymentInfo.qrImageUrl,
+                gatewayEnabled: paymentInfo.gatewayEnabled,
               }
             : null
         }

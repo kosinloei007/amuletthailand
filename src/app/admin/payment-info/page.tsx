@@ -29,6 +29,7 @@ export default async function PaymentInfoPage() {
         accountNumber={paymentInfo?.accountNumber ?? ""}
         promptPayId={paymentInfo?.promptPayId ?? ""}
         qrImageUrl={paymentInfo?.qrImageUrl ?? ""}
+        gatewayEnabled={paymentInfo?.gatewayEnabled ?? false}
       />
     </main>
   );

@@ -71,6 +71,15 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - Order tracking (`/track-order`, ไม่ต้อง login) และ order confirmation (`/order-confirmation/[orderNumber]`) เคลียร์ตะกร้าฝั่ง client ผ่าน `<CartClearer />` (เพราะ server ไม่รู้จัก localStorage)
 - ทดสอบ end-to-end จริงแล้ว (2026-08-12): guest checkout, member checkout (ยืนยันว่าส่วนลดสมาชิก+ที่อยู่ default ทำงานถูกต้อง), admin ยืนยันสลิป/เปลี่ยนสถานะออร์เดอร์, ทดสอบส่ง Telegram/อีเมลจากหน้า admin
 
+**Payment gateway (จำลอง) ที่ทำไว้แล้ว** (roadmap ข้อ 7, เสร็จแล้ว 2026-08-12):
+- **เป็น mock gateway ล้วนๆ ไม่ได้ต่อ Omise/2C2P จริง** — ตามคำสั่งชัดเจนของผู้ใช้ว่า "payment gateway ไม่ต้องใช้ให้ confirm ด้วยปุ่มที่หน้าจอเอา" ห้ามเข้าใจผิดว่ายังต้องไปหา API key จริงมาต่อ ปุ่ม "ยืนยันการชำระเงิน" บนหน้า checkout คือ implementation ที่ต้องการแล้ว
+- Schema เพิ่ม `PaymentInfo.gatewayEnabled` (toggle เปิด/ปิดต่อร้าน) และ model `PaymentTransaction` (`Order` 1-to-many, เก็บ `gatewayName`/`transactionRef`/`gatewayStatus`) ตามที่ [docs/database.md](./docs/database.md) แนะนำไว้ล่วงหน้าให้ออกแบบตารางแยกรองรับ gateway ในอนาคต — **ถ้าจะเปลี่ยนไปต่อ gateway จริงในอนาคต จุดเดียวที่ต้องแก้คือ `src/lib/checkout/mockGateway.ts`** ไม่ต้องแก้ schema หรือ checkout flow
+- Toggle เปิดใช้งานที่ `/admin/payment-info` (checkbox "เปิดใช้งาน Payment Gateway (จำลอง)") — ถ้าร้านไม่เปิด ลูกค้าจะเห็นแค่ตัวเลือกโอนเงิน+แนบสลิปเหมือนเดิม ไม่มี UI เปลี่ยนแปลง
+- ตอนเปิดใช้งาน หน้า checkout (`CheckoutForm.tsx`) จะโชว์ radio ให้เลือก "โอนเงิน+แนบสลิป" หรือ "ชำระผ่าน Payment Gateway (ยืนยันทันที)" — เลือก gateway แล้วไม่ต้องแนบสลิป กดปุ่มเดียวจบ
+- `createOrderAction` (`src/lib/checkout/actions.ts`) แยก flow ตาม `paymentMethod`: ฝั่ง gateway จะสร้าง order ด้วย `status: "verified"` ทันที (ข้าม `pending_verify`) และสร้างแถว `PaymentTransaction` คู่กันในทรานแซกชันเดียวกับการสร้างออร์เดอร์/ตัดสต็อก — เช็คซ้ำฝั่ง server เสมอว่า `paymentInfo.gatewayEnabled` เป็น true ก่อนยอมให้ใช้ (กัน client ปลอม `paymentMethod=gateway` ทั้งที่ร้านไม่ได้เปิด)
+- `/admin/orders/[id]` แสดง section "การชำระผ่าน Payment Gateway (จำลอง)" (gatewayName/ref/status/เวลา) แทนที่ section สลิปโดยอัตโนมัติเมื่อออร์เดอร์นั้นมี `PaymentTransaction` ผูกอยู่ — admin ไม่ต้องกดยืนยันสลิปเองสำหรับออร์เดอร์ที่จ่ายผ่าน gateway เพราะยืนยันไปแล้วตอนสร้างออร์เดอร์
+- ทดสอบ end-to-end จริงแล้วใน browser (2026-08-12): เปิด toggle → checkout เลือก gateway → ยืนยันทันทีไม่ต้องรอตรวจสลิป → เช็คใน `/admin/orders` เห็นสถานะ "ยืนยันแล้ว" ทันที → เปิดดู detail เห็น transaction ref/status ถูกต้อง; flow โอนเงิน+แนบสลิปเดิมยังทำงานปกติไม่มี regression
+
 - Image: เก็บ path รูปใน object storage (S3-compatible) — ตอน dev ใช้ placeholder ก่อน
 - State/filter: URL query params เป็นหลัก (เช่น `/products?province=phitsanulok&monk=luang-pho-koon`) เพื่อให้แชร์ลิงก์กรองได้และ SEO friendly
 
@@ -93,7 +102,7 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - [x] หน้าหลัก (Home) — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md) (เสร็จแล้ว 2026-08-12 — hero, แถบ filter ด่วน, พระเครื่องเข้ามาใหม่ (ซ่อนถ้าว่าง), สินค้าขายดี (ซ่อนถ้าว่าง — ยังไม่มี order จริงจนกว่าจะทำ checkout), แนะนำตามจังหวัด/หลวงพ่อ; หน้านี้ตั้ง `export const revalidate = 60` เพราะ Next.js จะ static-prerender ทิ้งไว้เฉยๆ ถ้าไม่ตั้ง ทำให้สินค้าใหม่ไม่อัปเดต; มี `GET /api/products?sort=newest&days=N` แยกไว้ตามที่ docs ขอ)
 - [x] หน้ารายการสินค้า พร้อม filter แบบ multi-select: จังหวัด, หลวงพ่อ/วัด, หมวดหมู่, ช่วงราคา — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md) (`/products` เสร็จแล้ว 2026-08-12 — filter เป็น plain GET form สะท้อนใน URL query string ตรงตาม convention)
 - [x] หน้ารายละเอียดสินค้า, หน้าโปรไฟล์หลวงพ่อ/วัด (`/monks/[slug]`), หน้าตามจังหวัด (`/provinces/[slug]`) (เสร็จแล้ว 2026-08-12 — gallery เรียงรูปพระก่อนแล้วตามด้วยรูปใบรับประกันตาม docs/database.md, การ์ดสินค้าใช้ shared component `ProductCard` ร่วมกันทั้ง 3 หน้า)
-- [x] ตะกร้าสินค้า + checkout + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ + payment gateway — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) (เสร็จแล้ว 2026-08-12 ยกเว้น **payment gateway จริง (Omise/2C2P) และ OCR ตรวจสลิปอัตโนมัติ (SlipOK ฯลฯ) ที่ยังไม่ได้ทำ** เพราะต้องใช้ API key ของผู้ให้บริการจริงซึ่งไม่มีให้ตอนนี้ — มีปุ่ม "ยืนยันด้วยมือ" ที่ admin ใช้แทนได้เต็มรูปแบบ ดูรายละเอียดที่ section "ตะกร้า/checkout" ด้านล่าง)
+- [x] ตะกร้าสินค้า + checkout + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ + payment gateway — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) (เสร็จแล้ว 2026-08-12 — payment gateway เป็น **mock/จำลองตามที่ผู้ใช้ระบุชัดเจน** ไม่ได้ต่อ Omise/2C2P จริง ดูรายละเอียดที่ section "Payment gateway (จำลอง)" ด้านล่าง; **OCR ตรวจสลิปอัตโนมัติ (SlipOK ฯลฯ) ยังไม่ได้ทำ** เพราะต้องใช้ API key ของผู้ให้บริการจริงซึ่งไม่มีให้ตอนนี้ — มีปุ่ม "ยืนยันด้วยมือ" ที่ admin ใช้แทนได้เต็มรูปแบบ)
 - [x] ระบบ Login แยก Admin/สมาชิก/Guest + ที่อยู่ default + ระดับสมาชิก (MemberTier) พร้อมส่วนลด/จัดส่งฟรีตามระดับ — ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md) (ครบทั้งหมดแล้ว 2026-08-12 รวมส่วนลด/จัดส่งฟรีที่ใช้จริงตอน checkout)
 - [x] ราคาขาย default จากต้นทุน (ปรับ % ได้) + โปรโมชั่นส่วนลดทั้งร้านตามช่วงเวลา — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) (โปรโมชั่นทั้งร้าน + `Tenant.defaultMarkupPercent` แก้ได้จาก `/admin/settings` เสร็จแล้ว 2026-08-12 — **แต่ยังไม่มีหน้า admin เพิ่ม/แก้สินค้า** ดังนั้น "คำนวณราคาขาย default อัตโนมัติตอนกรอกต้นทุน" ยังไม่มีจุดให้ใช้งานจริง เพราะสินค้าตอนนี้มาจาก seed script เท่านั้น รอทำตอนมีหน้าจัดการสินค้า)
 - [x] ระบบเปลี่ยนธีมร้าน — ดู [docs/theming.md](./docs/theming.md) (เสร็จแล้ว 2026-08-12 — ดูรายละเอียดที่ section "ระบบธีม" ด้านล่าง)
@@ -114,5 +123,5 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 4. ✅ หน้ารายละเอียดสินค้า + หน้าโปรไฟล์หลวงพ่อ/จังหวัด
 5. ✅ ระบบธีม + หน้าตั้งค่าร้าน — [docs/theming.md](./docs/theming.md)
 6. ✅ ตะกร้า + checkout (รวมส่วนลด/จัดส่งฟรีสมาชิก) + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ — [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
-7. เชื่อมต่อ payment gateway (ถ้าต้องการ)
+7. ✅ เชื่อมต่อ payment gateway — เป็น **mock/จำลอง** ตามที่ผู้ใช้ระบุ ("payment gateway ไม่ต้องใช้ให้ confirm ด้วยปุ่มที่หน้าจอเอา") ไม่ได้ต่อ Omise/2C2P จริง — ดูรายละเอียดที่ [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
 8. ระบบผู้ขายหลายราย (ถ้าต้องการ)

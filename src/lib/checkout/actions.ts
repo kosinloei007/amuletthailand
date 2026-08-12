@@ -8,6 +8,7 @@ import { getActiveStorePromotions } from "@/lib/checkout/promotionQueries";
 import { pickBestPromotion, calculatePricing } from "@/lib/checkout/pricing";
 import { uploadSlipFile } from "@/lib/checkout/uploadSlip";
 import { generateOrderNumber } from "@/lib/checkout/orderNumber";
+import { createMockGatewayCharge } from "@/lib/checkout/mockGateway";
 import { notifyNewOrder } from "@/lib/notifications/notifyOrder";
 
 export type ActionState = { error?: string } | undefined;
@@ -41,9 +42,21 @@ export async function createOrderAction(_prevState: ActionState, formData: FormD
     return { error: "กรุณากรอกชื่อผู้รับ เบอร์โทร และที่อยู่ให้ครบ" };
   }
 
+  const paymentMethod = String(formData.get("paymentMethod") ?? "bank_transfer");
+  if (!["bank_transfer", "gateway"].includes(paymentMethod)) {
+    return { error: "วิธีชำระเงินไม่ถูกต้อง" };
+  }
+
   const slipFile = formData.get("slip");
-  if (!(slipFile instanceof File) || slipFile.size === 0) {
+  if (paymentMethod === "bank_transfer" && (!(slipFile instanceof File) || slipFile.size === 0)) {
     return { error: "กรุณาแนบรูป slip การโอนเงิน" };
+  }
+
+  if (paymentMethod === "gateway") {
+    const paymentInfo = await prisma.paymentInfo.findUnique({ where: { tenantId: tenant.tenantId } });
+    if (!paymentInfo?.gatewayEnabled) {
+      return { error: "ร้านนี้ยังไม่ได้เปิดใช้งาน Payment Gateway" };
+    }
   }
 
   // ดึงข้อมูลสินค้าจริงจาก DB เสมอ ไม่เชื่อราคา/สต็อกที่ client ส่งมา
@@ -100,8 +113,12 @@ export async function createOrderAction(_prevState: ActionState, formData: FormD
 
   const pricing = calculatePricing({ subtotal, storePromotion: bestPromotion, memberTier });
 
-  const slipResult = await uploadSlipFile(slipFile);
-  if ("error" in slipResult) return { error: slipResult.error };
+  let paymentSlipUrl: string | null = null;
+  if (paymentMethod === "bank_transfer") {
+    const slipResult = await uploadSlipFile(slipFile as File);
+    if ("error" in slipResult) return { error: slipResult.error };
+    paymentSlipUrl = slipResult.url;
+  }
 
   const orderNumber = generateOrderNumber();
 
@@ -125,7 +142,9 @@ export async function createOrderAction(_prevState: ActionState, formData: FormD
         province: province || null,
         postalCode: postalCode || null,
         note: note || null,
-        paymentSlipUrl: slipResult.url,
+        paymentSlipUrl,
+        // gateway ยืนยันเงินทันที (จำลอง real-time confirmation) ข้าม pending_verify ไปเลย
+        status: paymentMethod === "gateway" ? "verified" : "pending_verify",
         items: { create: orderItemsData },
       },
       include: { items: true },
@@ -135,6 +154,18 @@ export async function createOrderAction(_prevState: ActionState, formData: FormD
       await tx.product.update({
         where: { productId: item.productId },
         data: { stock: { decrement: item.quantity } },
+      });
+    }
+
+    if (paymentMethod === "gateway") {
+      const charge = createMockGatewayCharge();
+      await tx.paymentTransaction.create({
+        data: {
+          orderId: created.orderId,
+          gatewayName: "mock",
+          transactionRef: charge.transactionRef,
+          gatewayStatus: charge.gatewayStatus,
+        },
       });
     }
 

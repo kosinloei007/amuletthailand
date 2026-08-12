@@ -28,7 +28,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
   const order = await prisma.order.findFirst({
     where: { orderId, tenantId: session.tenantId },
-    include: { items: true, user: true, appliedMemberTier: true, appliedStorePromotion: true },
+    include: { items: true, user: true, appliedMemberTier: true, appliedStorePromotion: true, paymentTransactions: true },
   });
   if (!order) {
     notFound();
@@ -91,33 +91,53 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         </div>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4">
-        <h2 className="font-medium">สลิปการโอนเงิน</h2>
-        {order.paymentSlipUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={order.paymentSlipUrl} alt="สลิปการโอนเงิน" className="max-w-xs rounded-md border border-black/10" />
-        ) : (
-          <p className="text-sm text-black/60">ไม่มีไฟล์แนบ</p>
-        )}
-        <p className="text-sm">
-          ผลตรวจสอบปัจจุบัน: <span className="font-medium">{SLIP_STATUS_LABEL[order.slipVerifyStatus] ?? order.slipVerifyStatus}</span>
-        </p>
-        <form action={updateSlipVerifyStatusAction} className="flex flex-wrap gap-2">
-          <input type="hidden" name="orderId" value={order.orderId} />
-          {Object.entries(SLIP_STATUS_LABEL).map(([value, label]) => (
-            <button
-              key={value}
-              type="submit"
-              name="slipVerifyStatus"
-              value={value}
-              disabled={order.slipVerifyStatus === value}
-              className="rounded-md border border-black/20 px-3 py-1.5 text-sm disabled:opacity-40"
-            >
-              {label}
-            </button>
+      {order.paymentTransactions.length > 0 ? (
+        <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm">
+          <h2 className="font-medium">การชำระผ่าน Payment Gateway (จำลอง)</h2>
+          {order.paymentTransactions.map((tx) => (
+            <div key={tx.paymentTransactionId} className="flex flex-col gap-0.5">
+              <p>
+                <span className="text-black/60">Gateway:</span> {tx.gatewayName}
+              </p>
+              <p>
+                <span className="text-black/60">Ref:</span> <span className="font-mono">{tx.transactionRef}</span>
+              </p>
+              <p>
+                <span className="text-black/60">สถานะ:</span> {tx.gatewayStatus}
+              </p>
+              <p className="text-black/60">{tx.createdAt.toLocaleString("th-TH")}</p>
+            </div>
           ))}
-        </form>
-      </section>
+        </section>
+      ) : (
+        <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4">
+          <h2 className="font-medium">สลิปการโอนเงิน</h2>
+          {order.paymentSlipUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={order.paymentSlipUrl} alt="สลิปการโอนเงิน" className="max-w-xs rounded-md border border-black/10" />
+          ) : (
+            <p className="text-sm text-black/60">ไม่มีไฟล์แนบ</p>
+          )}
+          <p className="text-sm">
+            ผลตรวจสอบปัจจุบัน: <span className="font-medium">{SLIP_STATUS_LABEL[order.slipVerifyStatus] ?? order.slipVerifyStatus}</span>
+          </p>
+          <form action={updateSlipVerifyStatusAction} className="flex flex-wrap gap-2">
+            <input type="hidden" name="orderId" value={order.orderId} />
+            {Object.entries(SLIP_STATUS_LABEL).map(([value, label]) => (
+              <button
+                key={value}
+                type="submit"
+                name="slipVerifyStatus"
+                value={value}
+                disabled={order.slipVerifyStatus === value}
+                className="rounded-md border border-black/20 px-3 py-1.5 text-sm disabled:opacity-40"
+              >
+                {label}
+              </button>
+            ))}
+          </form>
+        </section>
+      )}
 
       <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4">
         <h2 className="font-medium">สถานะออร์เดอร์</h2>

@@ -22,6 +22,7 @@ type PaymentInfo = {
   accountNumber: string;
   promptPayId: string | null;
   qrImageUrl: string | null;
+  gatewayEnabled: boolean;
 };
 
 export function CheckoutForm({
@@ -40,6 +41,7 @@ export function CheckoutForm({
   const { items, subtotal } = useCart();
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(createOrderAction, undefined);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "gateway">("bank_transfer");
 
   const bestPromotion = useMemo(() => pickBestPromotion(promotions, subtotal), [promotions, subtotal]);
   const pricing = useMemo(
@@ -212,27 +214,58 @@ export function CheckoutForm({
         </div>
       </section>
 
-      {paymentInfo && (
-        <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4">
-          <h2 className="font-medium">โอนเงินเข้าบัญชี</h2>
-          <p className="text-sm">
-            {paymentInfo.bankName} · {paymentInfo.accountName}
-            <br />
-            เลขบัญชี: <span className="font-mono">{paymentInfo.accountNumber}</span>
-          </p>
-          {(qrDataUrl || paymentInfo.qrImageUrl) && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={qrDataUrl ?? paymentInfo.qrImageUrl ?? ""} alt="QR พร้อมเพย์" className="h-48 w-48" />
-          )}
+      <input type="hidden" name="paymentMethod" value={paymentMethod} />
+
+      {paymentInfo?.gatewayEnabled && (
+        <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4">
+          <h2 className="mb-1 font-medium">วิธีชำระเงิน</h2>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              checked={paymentMethod === "bank_transfer"}
+              onChange={() => setPaymentMethod("bank_transfer")}
+            />
+            โอนเงิน + แนบสลิป
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" checked={paymentMethod === "gateway"} onChange={() => setPaymentMethod("gateway")} />
+            ชำระผ่าน Payment Gateway (ยืนยันทันที)
+          </label>
         </section>
       )}
 
-      <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4">
-        <label htmlFor="slip" className="text-sm font-medium">
-          แนบรูป/ไฟล์ slip การโอนเงิน
-        </label>
-        <input id="slip" name="slip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
-      </section>
+      {paymentMethod === "bank_transfer" ? (
+        <>
+          {paymentInfo && (
+            <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4">
+              <h2 className="font-medium">โอนเงินเข้าบัญชี</h2>
+              <p className="text-sm">
+                {paymentInfo.bankName} · {paymentInfo.accountName}
+                <br />
+                เลขบัญชี: <span className="font-mono">{paymentInfo.accountNumber}</span>
+              </p>
+              {(qrDataUrl || paymentInfo.qrImageUrl) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={qrDataUrl ?? paymentInfo.qrImageUrl ?? ""} alt="QR พร้อมเพย์" className="h-48 w-48" />
+              )}
+            </section>
+          )}
+
+          <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4">
+            <label htmlFor="slip" className="text-sm font-medium">
+              แนบรูป/ไฟล์ slip การโอนเงิน
+            </label>
+            <input id="slip" name="slip" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
+          </section>
+        </>
+      ) : (
+        <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm">
+          <h2 className="font-medium">ชำระผ่าน Payment Gateway</h2>
+          <p className="text-black/60">
+            กด "ยืนยันการชำระเงิน" ด้านล่างเพื่อจำลองการชำระเงินผ่าน gateway — ระบบจะยืนยันคำสั่งซื้อให้ทันทีโดยไม่ต้องรอแอดมินตรวจสลิป
+          </p>
+        </section>
+      )}
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
@@ -241,7 +274,11 @@ export function CheckoutForm({
         disabled={isPending}
         className="rounded-md bg-primary px-6 py-3 text-sm text-white disabled:opacity-60"
       >
-        {isPending ? "กำลังยืนยันคำสั่งซื้อ..." : "ยืนยันคำสั่งซื้อ"}
+        {isPending
+          ? "กำลังยืนยันคำสั่งซื้อ..."
+          : paymentMethod === "gateway"
+            ? "ยืนยันการชำระเงิน"
+            : "ยืนยันคำสั่งซื้อ"}
       </button>
     </form>
   );

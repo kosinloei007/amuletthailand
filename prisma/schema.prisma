@@ -244,10 +244,28 @@ model PaymentInfo {
   accountNumber String  @map("AccountNumber") @db.NVarChar(50)
   promptPayId   String? @map("PromptPayId") @db.NVarChar(50)
   qrImageUrl    String? @map("QrImageUrl") @db.NVarChar(500)
+  gatewayEnabled Boolean @default(false) @map("GatewayEnabled") // เปิดทางเลือก "ชำระผ่าน Payment Gateway" (จำลอง) คู่กับโอน+แนบสลิป
 
   tenant Tenant @relation(fields: [tenantId], references: [tenantId])
 
   @@map("PaymentInfos")
+}
+
+// ===== PaymentTransactions (รายการชำระผ่าน payment gateway ต่อออร์เดอร์) =====
+// หมายเหตุ: ตอนนี้เป็น mock gateway (ไม่ได้ต่อ Omise/2C2P จริง เพราะไม่มี API key) —
+// โครงสร้างตารางออกแบบไว้ให้พร้อมสลับไปต่อ gateway จริงในอนาคตได้โดยไม่ต้องแก้ schema
+model PaymentTransaction {
+  paymentTransactionId Int      @id @default(autoincrement()) @map("PaymentTransactionId")
+  orderId               Int      @map("OrderId")
+  gatewayName            String   @map("GatewayName") @db.NVarChar(50) // "mock" ตอนนี้ — จะเป็น "omise" | "2c2p" ถ้าต่อจริง
+  transactionRef         String   @map("TransactionRef") @db.NVarChar(100)
+  gatewayStatus          String   @map("GatewayStatus") @db.NVarChar(20) // successful | failed | pending
+  createdAt              DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+
+  order Order @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("PaymentTransactions")
 }
 
 // ===== NotifyConfigs (ตั้งค่าแจ้งเตือนต่อร้าน) =====
@@ -296,6 +314,7 @@ model Order {
   appliedMemberTier     MemberTier?     @relation("OrderAppliedMemberTier", fields: [appliedMemberTierId], references: [memberTierId], onDelete: NoAction, onUpdate: NoAction)
   appliedStorePromotion StorePromotion? @relation("OrderAppliedStorePromotion", fields: [appliedStorePromotionId], references: [storePromotionId], onDelete: NoAction, onUpdate: NoAction)
   items                 OrderItem[]
+  paymentTransactions   PaymentTransaction[]
 
   @@index([tenantId, status])
   @@index([phone, orderNumber])

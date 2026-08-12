@@ -9,12 +9,14 @@ export function PaymentInfoForm({
   accountNumber,
   promptPayId,
   qrImageUrl,
+  gatewayEnabled,
 }: {
   bankName: string;
   accountName: string;
   accountNumber: string;
   promptPayId: string;
   qrImageUrl: string;
+  gatewayEnabled: boolean;
 }) {
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(updatePaymentInfoAction, undefined);
 
@@ -89,6 +91,11 @@ export function PaymentInfoForm({
           className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="gatewayEnabled" defaultChecked={gatewayEnabled} />
+        เปิดใช้งาน Payment Gateway (จำลอง) — ให้ลูกค้าเลือกยืนยันการชำระเงินด้วยปุ่มบนหน้าจอแทนการโอน+แนบสลิป
+      </label>
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 

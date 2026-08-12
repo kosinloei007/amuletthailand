@@ -22,6 +22,7 @@ export async function updatePaymentInfoAction(_prevState: ActionState, formData:
   const accountNumber = String(formData.get("accountNumber") ?? "").trim();
   const promptPayId = String(formData.get("promptPayId") ?? "").trim();
   const qrImageUrl = String(formData.get("qrImageUrl") ?? "").trim();
+  const gatewayEnabled = formData.get("gatewayEnabled") === "on";
 
   if (!bankName || !accountName || !accountNumber) {
     return { error: "กรุณากรอกธนาคาร, ชื่อบัญชี และเลขที่บัญชีให้ครบ" };
@@ -29,7 +30,14 @@ export async function updatePaymentInfoAction(_prevState: ActionState, formData:
 
   await prisma.paymentInfo.upsert({
     where: { tenantId },
-    update: { bankName, accountName, accountNumber, promptPayId: promptPayId || null, qrImageUrl: qrImageUrl || null },
+    update: {
+      bankName,
+      accountName,
+      accountNumber,
+      promptPayId: promptPayId || null,
+      qrImageUrl: qrImageUrl || null,
+      gatewayEnabled,
+    },
     create: {
       tenantId,
       bankName,
@@ -37,6 +45,7 @@ export async function updatePaymentInfoAction(_prevState: ActionState, formData:
       accountNumber,
       promptPayId: promptPayId || null,
       qrImageUrl: qrImageUrl || null,
+      gatewayEnabled,
     },
   });
 
