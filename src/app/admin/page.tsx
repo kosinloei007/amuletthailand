@@ -45,17 +45,23 @@ export default async function AdminDashboardPage() {
       </div>
 
       {session.role === "tenant_admin" && (
-        <div className="flex gap-3">
-          <Link
-            href="/admin/member-tiers"
-            className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm"
-          >
+        <div className="flex flex-wrap gap-3">
+          <Link href="/admin/orders" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            ออร์เดอร์
+          </Link>
+          <Link href="/admin/member-tiers" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
             จัดการระดับสมาชิก
           </Link>
-          <Link
-            href="/admin/settings"
-            className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm"
-          >
+          <Link href="/admin/promotions" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            โปรโมชั่นทั้งร้าน
+          </Link>
+          <Link href="/admin/payment-info" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            บัญชีรับโอนเงิน
+          </Link>
+          <Link href="/admin/notifications" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            การแจ้งเตือน
+          </Link>
+          <Link href="/admin/settings" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
             ตั้งค่าร้าน
           </Link>
         </div>

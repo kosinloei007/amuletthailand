@@ -3,7 +3,15 @@
 import { useActionState } from "react";
 import { updateShopInfoAction, type ActionState } from "@/lib/settings/actions";
 
-export function ShopInfoForm({ shopName, ownerContact }: { shopName: string; ownerContact: string | null }) {
+export function ShopInfoForm({
+  shopName,
+  ownerContact,
+  defaultMarkupPercent,
+}: {
+  shopName: string;
+  ownerContact: string | null;
+  defaultMarkupPercent: number | string;
+}) {
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(updateShopInfoAction, undefined);
 
   return (
@@ -33,6 +41,21 @@ export function ShopInfoForm({ shopName, ownerContact }: { shopName: string; own
           placeholder="เช่น line: @your-shop"
           className="rounded-md border border-black/10 px-3 py-2"
         />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="defaultMarkupPercent" className="text-sm font-medium">
+          % บวกราคาขาย default จากต้นทุน
+        </label>
+        <input
+          id="defaultMarkupPercent"
+          name="defaultMarkupPercent"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={defaultMarkupPercent}
+          className="rounded-md border border-black/10 px-3 py-2"
+        />
+        <p className="text-xs text-black/50">มีผลกับสินค้าที่เพิ่มใหม่หลังจากนี้เท่านั้น ไม่กระทบราคาสินค้าที่ตั้งไว้แล้ว</p>
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button

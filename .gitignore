@@ -48,3 +48,6 @@ next-env.d.ts
 /.claude
 /.windsurf
 /skills-lock.json
+
+# ไฟล์ slip ที่ลูกค้าอัปโหลด (dev เก็บบนดิสก์เอง — โปรดักชันต้องเปลี่ยนไปใช้ object storage)
+/public/uploads

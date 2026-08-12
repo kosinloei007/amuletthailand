@@ -38,7 +38,11 @@ export default async function ShopSettingsPage({
 
       <section className="flex flex-col gap-4 rounded-lg border border-black/10 p-4">
         <h2 className="font-medium">ข้อมูลร้าน</h2>
-        <ShopInfoForm shopName={tenant.shopName} ownerContact={tenant.ownerContact} />
+        <ShopInfoForm
+          shopName={tenant.shopName}
+          ownerContact={tenant.ownerContact}
+          defaultMarkupPercent={tenant.defaultMarkupPercent.toString()}
+        />
       </section>
 
       <section className="flex flex-col gap-4 rounded-lg border border-black/10 p-4">

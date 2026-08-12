@@ -59,6 +59,18 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - หน้า `/admin/settings` (เฉพาะ `tenant_admin`): แก้ shopName/ownerContact, เลือก preset (มี swatch preview), ปรับแต่งสี (color picker) + logoUrl + fontFamily + layoutStyle เอง
 - Root layout มี header กลางๆ แสดงโลโก้ (ถ้ามี)/ชื่อร้าน + ลิงก์ไปหน้าสินค้า — ตั้งใจไม่ใส่ session-dependent UI (เช่น "เข้าสู่ระบบ"/"บัญชีของฉัน") ในนี้ เพราะจะบังคับให้ทุกหน้ากลายเป็น dynamic เต็มรูป (เสีย ISR ของหน้า public เช่น home/products)
 
+**ตะกร้า/checkout ที่ทำไว้แล้ว** (ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) ก่อนแก้ไขส่วนนี้เสมอ):
+- **ตะกร้าเป็น client-side ล้วนๆ** เก็บใน localStorage (`src/lib/cart/CartContext.tsx`, key `amulet-cart`) — สคีมาไม่มีตาราง Cart ตะกร้าจะกลายเป็น `Order`/`OrderItem` จริงก็ต่อเมื่อกดยืนยันคำสั่งซื้อสำเร็จเท่านั้น อย่าไปหาตาราง cart ใน DB เพราะไม่มี
+- ราคา/สต็อกที่ใช้คำนวณตอนสร้างออร์เดอร์ **ดึงจาก DB สดเสมอ** ไม่เชื่อค่าที่ client ส่งมาใน `cartItems` JSON (กัน manipulate ราคา) — ดู `createOrderAction` ใน `src/lib/checkout/actions.ts`
+- คำนวณราคาแบบ pure function ล้วนอยู่ที่ `src/lib/checkout/pricing.ts` (`calculatePricing`, `pickBestPromotion` — ไม่มี `"server-only"` เพราะต้อง import ไปใช้ preview ราคาฝั่ง client ใน `CheckoutForm` ได้ด้วย) ส่วน query DB (หา promotion ที่ active ตอนนี้) แยกไว้คนละไฟล์ที่ `src/lib/checkout/promotionQueries.ts` (มี `"server-only"`) — ลำดับคำนวณตรงตาม docs เป๊ะ: Subtotal → ส่วนลดร้าน (เลือกตัวลดเยอะสุดถ้ามีหลายโปร ไม่ทบกัน) → ส่วนลดสมาชิกจากยอดที่เหลือ → ค่าส่ง → ยอดรวม
+- **ไม่มี field ค่าส่งมาตรฐานในสคีมา** (มีแค่ `MemberTier.freeShippingEnabled`/`freeShippingMinAmount` ว่า "ฟรีไหม") ใช้ค่าคงที่ `FLAT_SHIPPING_FEE = 50` บาทแทนไปก่อนใน `pricing.ts` — ถ้าต้องให้ร้านตั้งค่าส่งเองต้องเพิ่ม field ใหม่ในสคีมา
+- QR PromptPay generate จริงด้วย `promptpay-qr` + `qrcode` ผ่าน `GET /api/checkout/qr?amount=X` (เพราะต้องรู้ยอดสุทธิที่คำนวณแล้วฝั่ง client ก่อน) fallback ไปใช้ `PaymentInfo.qrImageUrl` ถ้าร้านไม่มี PromptPay
+- **สลิปเก็บไว้ที่ `public/uploads/slips/` บนดิสก์เครื่อง dev เอง** (gitignored) ผ่าน `src/lib/checkout/uploadSlip.ts` — เป็นทางลัดสำหรับ dev ตาม CLAUDE.md ("ใช้ placeholder ก่อน") **โปรดักชันจริงต้องเปลี่ยนไปใช้ object storage (S3)** เพราะไฟล์บนดิสก์แบบนี้หายเมื่อ deploy ใหม่/scale หลาย instance
+- แจ้งเตือนออร์เดอร์ใหม่ตั้งค่าได้ที่ `/admin/notifications`: **Telegram ต่อ Bot API จริง** (`src/lib/notifications/telegram.ts`, ทดสอบแล้วว่า error handling ถูกต้องเมื่อ token ผิด) **ส่วนอีเมลยังเป็น stub** (`src/lib/notifications/email.ts` แค่ log ไม่ได้ส่งจริง เพราะไม่มี API key ของผู้ให้บริการ เช่น Resend/SendGrid) — เรียกจาก `notifyNewOrder()` แบบไม่ `await` ตอนสร้างออร์เดอร์สำเร็จ (fire-and-forget ตาม docs ว่าห้าม block response ลูกค้า)
+- **ไม่มี OCR ตรวจสลิปอัตโนมัติจริง** (ต้องใช้ API แบบ SlipOK/ธนาคารที่มีค่าใช้จ่าย/ต้องสมัครบัญชี ไม่มีให้ตอนนี้) — มีแค่ `Order.slipVerifyStatus` (pending/matched/mismatched/unreadable) ให้ admin กดยืนยันด้วยมือที่ `/admin/orders/[id]` ตามที่ docs บอกว่าต้องมีปุ่มสำรองอยู่แล้ว ถ้าจะต่อ OCR จริงในอนาคต จุดที่ต้องแก้คือหลังบรรทัด `uploadSlipFile()` สำเร็จใน `createOrderAction`
+- Order tracking (`/track-order`, ไม่ต้อง login) และ order confirmation (`/order-confirmation/[orderNumber]`) เคลียร์ตะกร้าฝั่ง client ผ่าน `<CartClearer />` (เพราะ server ไม่รู้จัก localStorage)
+- ทดสอบ end-to-end จริงแล้ว (2026-08-12): guest checkout, member checkout (ยืนยันว่าส่วนลดสมาชิก+ที่อยู่ default ทำงานถูกต้อง), admin ยืนยันสลิป/เปลี่ยนสถานะออร์เดอร์, ทดสอบส่ง Telegram/อีเมลจากหน้า admin
+
 - Image: เก็บ path รูปใน object storage (S3-compatible) — ตอน dev ใช้ placeholder ก่อน
 - State/filter: URL query params เป็นหลัก (เช่น `/products?province=phitsanulok&monk=luang-pho-koon`) เพื่อให้แชร์ลิงก์กรองได้และ SEO friendly
 
@@ -81,9 +93,9 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - [x] หน้าหลัก (Home) — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md) (เสร็จแล้ว 2026-08-12 — hero, แถบ filter ด่วน, พระเครื่องเข้ามาใหม่ (ซ่อนถ้าว่าง), สินค้าขายดี (ซ่อนถ้าว่าง — ยังไม่มี order จริงจนกว่าจะทำ checkout), แนะนำตามจังหวัด/หลวงพ่อ; หน้านี้ตั้ง `export const revalidate = 60` เพราะ Next.js จะ static-prerender ทิ้งไว้เฉยๆ ถ้าไม่ตั้ง ทำให้สินค้าใหม่ไม่อัปเดต; มี `GET /api/products?sort=newest&days=N` แยกไว้ตามที่ docs ขอ)
 - [x] หน้ารายการสินค้า พร้อม filter แบบ multi-select: จังหวัด, หลวงพ่อ/วัด, หมวดหมู่, ช่วงราคา — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md) (`/products` เสร็จแล้ว 2026-08-12 — filter เป็น plain GET form สะท้อนใน URL query string ตรงตาม convention)
 - [x] หน้ารายละเอียดสินค้า, หน้าโปรไฟล์หลวงพ่อ/วัด (`/monks/[slug]`), หน้าตามจังหวัด (`/provinces/[slug]`) (เสร็จแล้ว 2026-08-12 — gallery เรียงรูปพระก่อนแล้วตามด้วยรูปใบรับประกันตาม docs/database.md, การ์ดสินค้าใช้ shared component `ProductCard` ร่วมกันทั้ง 3 หน้า)
-- [ ] ตะกร้าสินค้า + checkout + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ + payment gateway — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
-- [x] ระบบ Login แยก Admin/สมาชิก/Guest + ที่อยู่ default + ระดับสมาชิก (MemberTier) พร้อมส่วนลด/จัดส่งฟรีตามระดับ — ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md) (ทำ auth + จัดการที่อยู่สมาชิก + admin ตั้งค่า MemberTier เสร็จแล้ว 2026-08-12 — ส่วนที่เหลือคือ**เอาส่วนลด/จัดส่งฟรีไปใช้จริงตอน checkout** ซึ่งอยู่ใน roadmap ข้อ 6/บรรทัดถัดไปแล้ว)
-- [ ] ราคาขาย default จากต้นทุน (ปรับ % ได้) + โปรโมชั่นส่วนลดทั้งร้านตามช่วงเวลา — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
+- [x] ตะกร้าสินค้า + checkout + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ + payment gateway — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) (เสร็จแล้ว 2026-08-12 ยกเว้น **payment gateway จริง (Omise/2C2P) และ OCR ตรวจสลิปอัตโนมัติ (SlipOK ฯลฯ) ที่ยังไม่ได้ทำ** เพราะต้องใช้ API key ของผู้ให้บริการจริงซึ่งไม่มีให้ตอนนี้ — มีปุ่ม "ยืนยันด้วยมือ" ที่ admin ใช้แทนได้เต็มรูปแบบ ดูรายละเอียดที่ section "ตะกร้า/checkout" ด้านล่าง)
+- [x] ระบบ Login แยก Admin/สมาชิก/Guest + ที่อยู่ default + ระดับสมาชิก (MemberTier) พร้อมส่วนลด/จัดส่งฟรีตามระดับ — ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md) (ครบทั้งหมดแล้ว 2026-08-12 รวมส่วนลด/จัดส่งฟรีที่ใช้จริงตอน checkout)
+- [x] ราคาขาย default จากต้นทุน (ปรับ % ได้) + โปรโมชั่นส่วนลดทั้งร้านตามช่วงเวลา — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md) (โปรโมชั่นทั้งร้าน + `Tenant.defaultMarkupPercent` แก้ได้จาก `/admin/settings` เสร็จแล้ว 2026-08-12 — **แต่ยังไม่มีหน้า admin เพิ่ม/แก้สินค้า** ดังนั้น "คำนวณราคาขาย default อัตโนมัติตอนกรอกต้นทุน" ยังไม่มีจุดให้ใช้งานจริง เพราะสินค้าตอนนี้มาจาก seed script เท่านั้น รอทำตอนมีหน้าจัดการสินค้า)
 - [x] ระบบเปลี่ยนธีมร้าน — ดู [docs/theming.md](./docs/theming.md) (เสร็จแล้ว 2026-08-12 — ดูรายละเอียดที่ section "ระบบธีม" ด้านล่าง)
 - [ ] ระบบผู้ขายหลายราย (ถ้าต้องการรองรับ marketplace ไม่ใช่แค่ร้านเดียว)
 
@@ -101,6 +113,6 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 3. ✅ หน้ารายการสินค้า + ระบบ filter จังหวัด/หลวงพ่อ — [docs/home-and-catalog.md](./docs/home-and-catalog.md)
 4. ✅ หน้ารายละเอียดสินค้า + หน้าโปรไฟล์หลวงพ่อ/จังหวัด
 5. ✅ ระบบธีม + หน้าตั้งค่าร้าน — [docs/theming.md](./docs/theming.md)
-6. ตะกร้า + checkout (รวมส่วนลด/จัดส่งฟรีสมาชิก) + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ — [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
+6. ✅ ตะกร้า + checkout (รวมส่วนลด/จัดส่งฟรีสมาชิก) + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ — [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
 7. เชื่อมต่อ payment gateway (ถ้าต้องการ)
 8. ระบบผู้ขายหลายราย (ถ้าต้องการ)

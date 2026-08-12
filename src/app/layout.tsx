@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getCurrentTenant } from "@/lib/tenant";
 import { resolveTheme } from "@/lib/theme/resolve";
+import { CartProvider } from "@/lib/cart/CartContext";
+import { CartCount } from "@/components/cart/CartCount";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -52,21 +54,29 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </head>
       )}
       <body className="min-h-full flex flex-col">
-        <header className="border-b border-black/10 bg-surface">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              {theme.logoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={theme.logoUrl} alt={tenant.shopName} className="h-8 w-8 rounded object-cover" />
-              )}
-              {tenant.shopName}
-            </Link>
-            <Link href="/products" className="text-sm underline">
-              สินค้าทั้งหมด
-            </Link>
-          </div>
-        </header>
-        {children}
+        <CartProvider>
+          <header className="border-b border-black/10 bg-surface">
+            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+              <Link href="/" className="flex items-center gap-2 font-semibold">
+                {theme.logoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={theme.logoUrl} alt={tenant.shopName} className="h-8 w-8 rounded object-cover" />
+                )}
+                {tenant.shopName}
+              </Link>
+              <div className="flex items-center gap-4">
+                <Link href="/products" className="text-sm underline">
+                  สินค้าทั้งหมด
+                </Link>
+                <Link href="/track-order" className="text-sm underline">
+                  ติดตามออร์เดอร์
+                </Link>
+                <CartCount />
+              </div>
+            </div>
+          </header>
+          {children}
+        </CartProvider>
       </body>
     </html>
   );

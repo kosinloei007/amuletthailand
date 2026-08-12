@@ -19,14 +19,18 @@ export async function updateShopInfoAction(_prevState: ActionState, formData: Fo
   const { tenantId } = await requireTenantAdmin();
   const shopName = String(formData.get("shopName") ?? "").trim();
   const ownerContact = String(formData.get("ownerContact") ?? "").trim();
+  const defaultMarkupPercent = Number(formData.get("defaultMarkupPercent") ?? 30);
 
   if (!shopName) {
     return { error: "กรุณากรอกชื่อร้าน" };
   }
+  if (Number.isNaN(defaultMarkupPercent) || defaultMarkupPercent < 0) {
+    return { error: "% บวกราคาขาย default ต้องเป็นตัวเลขไม่ติดลบ" };
+  }
 
   await prisma.tenant.update({
     where: { tenantId },
-    data: { shopName, ownerContact: ownerContact || null },
+    data: { shopName, ownerContact: ownerContact || null, defaultMarkupPercent },
   });
 
   revalidatePath("/", "layout");

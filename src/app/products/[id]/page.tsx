@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentTenant } from "@/lib/tenant";
 import { getProductById } from "@/lib/products/queries";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -62,6 +63,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
 
           <p className="text-2xl font-bold">{Number(product.price).toLocaleString("th-TH")} บาท</p>
+
+          <AddToCartButton
+            productId={product.productId}
+            name={product.name}
+            price={Number(product.price)}
+            imageUrl={product.images[0]?.imageUrl ?? null}
+            stock={product.stock}
+          />
 
           <dl className="flex flex-col gap-2 text-sm">
             {product.monk && (
