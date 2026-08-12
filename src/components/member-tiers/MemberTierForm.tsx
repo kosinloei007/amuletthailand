@@ -43,7 +43,7 @@ export function MemberTierForm({
           type="text"
           required
           defaultValue={defaultValues?.name}
-          className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+          className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
 
@@ -56,7 +56,7 @@ export function MemberTierForm({
             id="discountType"
             name="discountType"
             defaultValue={defaultValues?.discountType ?? "none"}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           >
             <option value="none">ไม่มีส่วนลด</option>
             <option value="percentage">เปอร์เซ็นต์ (%)</option>
@@ -74,7 +74,7 @@ export function MemberTierForm({
             step="0.01"
             min="0"
             defaultValue={defaultValues?.discountValue ?? 0}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
       </div>
@@ -89,7 +89,7 @@ export function MemberTierForm({
             name="sortOrder"
             type="number"
             defaultValue={defaultValues?.sortOrder ?? 0}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -103,7 +103,7 @@ export function MemberTierForm({
             step="0.01"
             min="0"
             defaultValue={defaultValues?.freeShippingMinAmount ?? ""}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
       </div>
@@ -117,7 +117,7 @@ export function MemberTierForm({
         <input type="checkbox" name="isDefault" defaultChecked={defaultValues?.isDefault} />
         ตั้งเป็นระดับเริ่มต้นของสมาชิกใหม่
         {lockDefaultCheckbox && (
-          <span className="text-black/50 dark:text-white/50">
+          <span className="text-black/50">
             (เป็นระดับเริ่มต้นอยู่แล้ว ห้ามยกเลิกตรงนี้ ให้ไปตั้งระดับอื่นเป็นค่าเริ่มต้นแทน)
           </span>
         )}
@@ -128,7 +128,7 @@ export function MemberTierForm({
       <button
         type="submit"
         disabled={isPending}
-        className="w-fit rounded-md bg-foreground px-4 py-2 text-background disabled:opacity-60"
+        className="w-fit rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
       >
         {isPending ? "กำลังบันทึก..." : submitLabel}
       </button>

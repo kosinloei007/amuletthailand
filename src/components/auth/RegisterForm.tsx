@@ -18,7 +18,7 @@ export function RegisterForm() {
           type="text"
           required
           autoComplete="name"
-          className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+          className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -31,7 +31,7 @@ export function RegisterForm() {
           type="email"
           required
           autoComplete="email"
-          className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+          className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -43,7 +43,7 @@ export function RegisterForm() {
           name="phone"
           type="tel"
           autoComplete="tel"
-          className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+          className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -57,7 +57,7 @@ export function RegisterForm() {
           required
           minLength={8}
           autoComplete="new-password"
-          className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+          className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
       <div className="flex flex-col gap-1">
@@ -71,14 +71,14 @@ export function RegisterForm() {
           required
           minLength={8}
           autoComplete="new-password"
-          className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+          className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-md bg-foreground px-4 py-2 text-background disabled:opacity-60"
+        className="rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
       >
         {isPending ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
       </button>

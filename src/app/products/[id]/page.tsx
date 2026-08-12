@@ -34,7 +34,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               className="aspect-square w-full rounded-lg object-cover"
             />
           ) : (
-            <div className="aspect-square w-full rounded-lg bg-black/5 dark:bg-white/10" />
+            <div className="aspect-square w-full rounded-lg bg-black/5" />
           )}
           {restImages.length > 0 && (
             <div className="grid grid-cols-4 gap-2">
@@ -55,7 +55,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <div>
             <h1 className="text-2xl font-semibold">{product.name}</h1>
             {product.category && (
-              <span className="mt-1 inline-block rounded-full bg-black/5 px-2 py-0.5 text-xs dark:bg-white/10">
+              <span className="mt-1 inline-block rounded-full bg-black/5 px-2 py-0.5 text-xs">
                 {product.category.name}
               </span>
             )}
@@ -66,7 +66,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <dl className="flex flex-col gap-2 text-sm">
             {product.monk && (
               <div className="flex justify-between">
-                <dt className="text-black/60 dark:text-white/60">หลวงพ่อ/วัด</dt>
+                <dt className="text-black/60">หลวงพ่อ/วัด</dt>
                 <dd>
                   <Link href={`/monks/${product.monk.slug}`} className="underline">
                     {product.monk.name}
@@ -77,7 +77,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             )}
             {product.province && (
               <div className="flex justify-between">
-                <dt className="text-black/60 dark:text-white/60">จังหวัด</dt>
+                <dt className="text-black/60">จังหวัด</dt>
                 <dd>
                   <Link href={`/provinces/${product.province.slug}`} className="underline">
                     {product.province.nameTh}
@@ -87,27 +87,27 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             )}
             {product.era && (
               <div className="flex justify-between">
-                <dt className="text-black/60 dark:text-white/60">ปีสร้าง/ยุค</dt>
+                <dt className="text-black/60">ปีสร้าง/ยุค</dt>
                 <dd>{product.era}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-black/60 dark:text-white/60">คงเหลือ</dt>
+              <dt className="text-black/60">คงเหลือ</dt>
               <dd>{product.stock > 0 ? `${product.stock} ชิ้น` : "สินค้าหมด"}</dd>
             </div>
           </dl>
 
           {product.hasCertificate && (
-            <div className="rounded-md bg-black/5 p-3 text-sm dark:bg-white/10">
+            <div className="rounded-md bg-black/5 p-3 text-sm">
               <p className="font-medium">มีใบรับประกัน</p>
-              {product.certificateInfo && <p className="text-black/70 dark:text-white/70">{product.certificateInfo}</p>}
+              {product.certificateInfo && <p className="text-black/70">{product.certificateInfo}</p>}
             </div>
           )}
 
           {product.description && (
             <div>
               <h2 className="mb-1 font-medium">รายละเอียด</h2>
-              <p className="whitespace-pre-line text-sm text-black/70 dark:text-white/70">{product.description}</p>
+              <p className="whitespace-pre-line text-sm text-black/70">{product.description}</p>
             </div>
           )}
         </div>

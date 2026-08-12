@@ -22,13 +22,13 @@ export default async function ProvincePage({ params }: { params: Promise<{ slug:
 
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">พระเครื่องจากจังหวัด{province.nameTh}</h1>
-        {province.region && <p className="text-sm text-black/60 dark:text-white/60">{province.region}</p>}
+        {province.region && <p className="text-sm text-black/60">{province.region}</p>}
       </div>
 
       <section className="flex flex-col gap-4">
-        <p className="text-sm text-black/60 dark:text-white/60">พบ {products.length} รายการ</p>
+        <p className="text-sm text-black/60">พบ {products.length} รายการ</p>
         {products.length === 0 ? (
-          <p className="text-black/60 dark:text-white/60">ยังไม่มีสินค้าจากจังหวัดนี้ในร้าน</p>
+          <p className="text-black/60">ยังไม่มีสินค้าจากจังหวัดนี้ในร้าน</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {products.map((product) => (

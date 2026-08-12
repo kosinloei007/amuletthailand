@@ -22,7 +22,7 @@ export default async function MonkProfilePage({ params }: { params: Promise<{ sl
 
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{monk.name}</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
+        <p className="text-sm text-black/60">
           {monk.templeName}
           {monk.province && (
             <>
@@ -33,13 +33,13 @@ export default async function MonkProfilePage({ params }: { params: Promise<{ sl
             </>
           )}
         </p>
-        {monk.bio && <p className="max-w-2xl whitespace-pre-line text-sm text-black/70 dark:text-white/70">{monk.bio}</p>}
+        {monk.bio && <p className="max-w-2xl whitespace-pre-line text-sm text-black/70">{monk.bio}</p>}
       </div>
 
       <section className="flex flex-col gap-4">
-        <p className="text-sm text-black/60 dark:text-white/60">พระเครื่องของ{monk.name} ({products.length} รายการ)</p>
+        <p className="text-sm text-black/60">พระเครื่องของ{monk.name} ({products.length} รายการ)</p>
         {products.length === 0 ? (
-          <p className="text-black/60 dark:text-white/60">ยังไม่มีสินค้าของหลวงพ่อองค์นี้ในร้าน</p>
+          <p className="text-black/60">ยังไม่มีสินค้าของหลวงพ่อองค์นี้ในร้าน</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {products.map((product) => (

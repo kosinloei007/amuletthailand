@@ -47,7 +47,7 @@ function FilterGroup({
               defaultChecked={selected.includes(option.slug)}
             />
             {option.label}
-            <span className="text-black/40 dark:text-white/40">({option.count})</span>
+            <span className="text-black/40">({option.count})</span>
           </label>
         ))}
       </div>
@@ -77,7 +77,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <h1 className="text-2xl font-semibold">รายการพระเครื่อง</h1>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[240px_1fr]">
-        <aside className="flex flex-col gap-6 rounded-lg border border-black/10 p-4 dark:border-white/20">
+        <aside className="flex flex-col gap-6 rounded-lg border border-black/10 p-4">
           <form method="get" className="flex flex-col gap-6">
             <FilterGroup title="จังหวัด" name="province" options={facets.provinces} selected={provinceSlugs} />
             <FilterGroup title="หลวงพ่อ/วัด" name="monk" options={facets.monks} selected={monkSlugs} />
@@ -92,7 +92,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   min="0"
                   placeholder="ต่ำสุด"
                   defaultValue={params.minPrice}
-                  className="w-full rounded-md border border-black/10 px-2 py-1.5 text-sm dark:border-white/20"
+                  className="w-full rounded-md border border-black/10 px-2 py-1.5 text-sm"
                 />
                 <span className="text-black/40">-</span>
                 <input
@@ -101,12 +101,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   min="0"
                   placeholder="สูงสุด"
                   defaultValue={params.maxPrice}
-                  className="w-full rounded-md border border-black/10 px-2 py-1.5 text-sm dark:border-white/20"
+                  className="w-full rounded-md border border-black/10 px-2 py-1.5 text-sm"
                 />
               </div>
             </fieldset>
 
-            <button type="submit" className="rounded-md bg-foreground px-4 py-2 text-sm text-background">
+            <button type="submit" className="rounded-md bg-primary px-4 py-2 text-sm text-white">
               กรองสินค้า
             </button>
             {hasActiveFilters && (
@@ -118,10 +118,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         </aside>
 
         <section className="flex flex-col gap-4">
-          <p className="text-sm text-black/60 dark:text-white/60">พบ {products.length} รายการ</p>
+          <p className="text-sm text-black/60">พบ {products.length} รายการ</p>
 
           {products.length === 0 ? (
-            <p className="text-black/60 dark:text-white/60">ไม่พบสินค้าตามเงื่อนไขที่เลือก</p>
+            <p className="text-black/60">ไม่พบสินค้าตามเงื่อนไขที่เลือก</p>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {products.map((product) => (

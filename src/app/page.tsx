@@ -29,13 +29,13 @@ export default async function Home() {
   return (
     <main className="flex flex-col gap-16 pb-16">
       {/* Hero */}
-      <section className="bg-black/5 px-4 py-16 dark:bg-white/5">
+      <section className="bg-black/5 px-4 py-16">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 text-center">
           <h1 className="text-3xl font-semibold sm:text-4xl">{tenant.shopName}</h1>
-          <p className="max-w-xl text-black/70 dark:text-white/70">
+          <p className="max-w-xl text-black/70">
             พระเครื่องแท้ ตรวจสอบย้อนกลับได้ ค้นหาตามจังหวัดหรือหลวงพ่อที่คุณศรัทธา
           </p>
-          <Link href="/products" className="rounded-md bg-foreground px-6 py-3 text-sm text-background">
+          <Link href="/products" className="rounded-md bg-primary px-6 py-3 text-sm text-white">
             ดูสินค้าทั้งหมด
           </Link>
         </div>
@@ -49,7 +49,7 @@ export default async function Home() {
               <Link
                 key={category.slug}
                 href={`/products?category=${category.slug}`}
-                className="rounded-full border border-black/10 px-3 py-1.5 text-sm dark:border-white/20"
+                className="rounded-full border border-black/10 px-3 py-1.5 text-sm"
               >
                 {category.label}
               </Link>
@@ -60,7 +60,7 @@ export default async function Home() {
               <Link
                 key={province.slug}
                 href={`/provinces/${province.slug}`}
-                className="rounded-full bg-black/5 px-3 py-1.5 text-sm dark:bg-white/10"
+                className="rounded-full bg-black/5 px-3 py-1.5 text-sm"
               >
                 จ.{province.label}
               </Link>
@@ -69,7 +69,7 @@ export default async function Home() {
               <Link
                 key={monk.slug}
                 href={`/monks/${monk.slug}`}
-                className="rounded-full bg-black/5 px-3 py-1.5 text-sm dark:bg-white/10"
+                className="rounded-full bg-black/5 px-3 py-1.5 text-sm"
               >
                 {monk.label}
               </Link>
@@ -122,10 +122,10 @@ export default async function Home() {
                     <Link
                       key={province.slug}
                       href={`/provinces/${province.slug}`}
-                      className="flex items-center justify-between rounded-lg border border-black/10 px-4 py-3 text-sm dark:border-white/20"
+                      className="flex items-center justify-between rounded-lg border border-black/10 px-4 py-3 text-sm"
                     >
                       <span>จ.{province.label}</span>
-                      <span className="text-black/50 dark:text-white/50">{province.count} รายการ</span>
+                      <span className="text-black/50">{province.count} รายการ</span>
                     </Link>
                   ))}
                 </div>
@@ -139,10 +139,10 @@ export default async function Home() {
                     <Link
                       key={monk.slug}
                       href={`/monks/${monk.slug}`}
-                      className="flex items-center justify-between rounded-lg border border-black/10 px-4 py-3 text-sm dark:border-white/20"
+                      className="flex items-center justify-between rounded-lg border border-black/10 px-4 py-3 text-sm"
                     >
                       <span>{monk.label}</span>
-                      <span className="text-black/50 dark:text-white/50">{monk.count} รายการ</span>
+                      <span className="text-black/50">{monk.count} รายการ</span>
                     </Link>
                   ))}
                 </div>

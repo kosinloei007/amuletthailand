@@ -41,25 +41,25 @@ export default async function MemberTiersPage({
         </Link>
       </div>
 
-      {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950">{error}</p>}
+      {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-600">{error}</p>}
 
       <div className="flex flex-col gap-4">
         {tiers.map((tier) => (
           <div
             key={tier.memberTierId}
-            className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/20"
+            className="flex flex-col gap-3 rounded-lg border border-black/10 p-4"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-medium">
                   {tier.name}
                   {tier.isDefault && (
-                    <span className="ml-2 rounded-full bg-foreground px-2 py-0.5 text-xs text-background">
+                    <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs text-white">
                       ค่าเริ่มต้น
                     </span>
                   )}
                 </p>
-                <p className="text-sm text-black/70 dark:text-white/70">
+                <p className="text-sm text-black/70">
                   ส่วนลด {tier.discountType === "none" ? "ไม่มี" : `${tier.discountValue} ${DISCOUNT_LABEL[tier.discountType]}`}
                   {" · "}
                   {tier.freeShippingEnabled
@@ -93,7 +93,7 @@ export default async function MemberTiersPage({
         ))}
       </div>
 
-      <div className="flex flex-col gap-4 rounded-lg border border-black/10 p-4 dark:border-white/20">
+      <div className="flex flex-col gap-4 rounded-lg border border-black/10 p-4">
         <h2 className="font-medium">เพิ่มระดับสมาชิกใหม่</h2>
         <MemberTierForm action={createMemberTierAction} submitLabel="เพิ่มระดับสมาชิก" />
       </div>

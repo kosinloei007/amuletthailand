@@ -23,24 +23,24 @@ export default async function AddressesPage() {
 
       <div className="flex flex-col gap-4">
         {addresses.length === 0 && (
-          <p className="text-black/60 dark:text-white/60">ยังไม่มีที่อยู่จัดส่ง เพิ่มที่อยู่แรกได้ด้านล่าง</p>
+          <p className="text-black/60">ยังไม่มีที่อยู่จัดส่ง เพิ่มที่อยู่แรกได้ด้านล่าง</p>
         )}
         {addresses.map((address) => (
           <div
             key={address.userAddressId}
-            className="flex flex-col gap-3 rounded-lg border border-black/10 p-4 dark:border-white/20"
+            className="flex flex-col gap-3 rounded-lg border border-black/10 p-4"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-medium">
                   {address.fullName} · {address.phone}
                   {address.isDefault && (
-                    <span className="ml-2 rounded-full bg-foreground px-2 py-0.5 text-xs text-background">
+                    <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs text-white">
                       ค่าเริ่มต้น
                     </span>
                   )}
                 </p>
-                <p className="text-sm text-black/70 dark:text-white/70">
+                <p className="text-sm text-black/70">
                   {address.address}
                   {address.subDistrict && ` ต.${address.subDistrict}`}
                   {address.district && ` อ.${address.district}`}
@@ -75,7 +75,7 @@ export default async function AddressesPage() {
         ))}
       </div>
 
-      <div className="flex flex-col gap-4 rounded-lg border border-black/10 p-4 dark:border-white/20">
+      <div className="flex flex-col gap-4 rounded-lg border border-black/10 p-4">
         <h2 className="font-medium">เพิ่มที่อยู่ใหม่</h2>
         <AddressForm action={createAddressAction} submitLabel="เพิ่มที่อยู่" />
       </div>

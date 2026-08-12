@@ -6,7 +6,7 @@ export default function RegisterPage() {
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4 py-12">
       <h1 className="text-2xl font-semibold">สมัครสมาชิก</h1>
       <RegisterForm />
-      <p className="text-sm text-black/70 dark:text-white/70">
+      <p className="text-sm text-black/70">
         มีบัญชีอยู่แล้ว?{" "}
         <Link href="/login" className="underline">
           เข้าสู่ระบบ

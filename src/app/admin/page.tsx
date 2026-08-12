@@ -22,35 +22,43 @@ export default async function AdminDashboardPage() {
         <form action={logoutAction}>
           <button
             type="submit"
-            className="rounded-md border border-black/20 px-3 py-1.5 text-sm dark:border-white/30"
+            className="rounded-md border border-black/20 px-3 py-1.5 text-sm"
           >
             ออกจากระบบ
           </button>
         </form>
       </div>
 
-      <p className="text-black/70 dark:text-white/70">
+      <p className="text-black/70">
         ยินดีต้อนรับ {session.fullName} ({session.role === "super_admin" ? "ผู้ดูแลระบบสูงสุด" : "แอดมินร้าน"})
       </p>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg border border-black/10 p-4 dark:border-white/20">
-          <p className="text-sm text-black/60 dark:text-white/60">สินค้าทั้งหมด</p>
+        <div className="rounded-lg border border-black/10 p-4">
+          <p className="text-sm text-black/60">สินค้าทั้งหมด</p>
           <p className="text-3xl font-semibold">{productCount}</p>
         </div>
-        <div className="rounded-lg border border-black/10 p-4 dark:border-white/20">
-          <p className="text-sm text-black/60 dark:text-white/60">คำสั่งซื้อทั้งหมด</p>
+        <div className="rounded-lg border border-black/10 p-4">
+          <p className="text-sm text-black/60">คำสั่งซื้อทั้งหมด</p>
           <p className="text-3xl font-semibold">{orderCount}</p>
         </div>
       </div>
 
       {session.role === "tenant_admin" && (
-        <Link
-          href="/admin/member-tiers"
-          className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm dark:border-white/30"
-        >
-          จัดการระดับสมาชิก
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/admin/member-tiers"
+            className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm"
+          >
+            จัดการระดับสมาชิก
+          </Link>
+          <Link
+            href="/admin/settings"
+            className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm"
+          >
+            ตั้งค่าร้าน
+          </Link>
+        </div>
       )}
     </main>
   );

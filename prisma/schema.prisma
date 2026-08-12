@@ -46,6 +46,7 @@ model Theme {
   logoUrl         String?  @map("LogoUrl") @db.NVarChar(500)
   fontFamily      String?  @map("FontFamily") @db.NVarChar(100)
   layoutStyle     String   @default("classic") @map("LayoutStyle") @db.NVarChar(50) // classic | minimal | gold-temple
+  isPreset        Boolean  @default(false) @map("IsPreset") // true = ธีมตั้งต้นของระบบให้เลือกใช้ทันที, false = ธีมที่ร้านปรับแต่งเอง (clone-on-write)
   createdAt       DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
 
   tenants Tenant[]

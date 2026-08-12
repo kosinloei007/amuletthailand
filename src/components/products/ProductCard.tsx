@@ -13,10 +13,10 @@ export function ProductCard({ product, badge }: { product: ProductCardData; badg
   return (
     <Link
       href={`/products/${product.productId}`}
-      className="relative flex flex-col gap-2 rounded-lg border border-black/10 p-3 dark:border-white/20"
+      className="relative flex flex-col gap-2 rounded-lg border border-black/10 p-3"
     >
       {badge && (
-        <span className="absolute left-5 top-5 rounded-full bg-foreground px-2 py-0.5 text-xs text-background">
+        <span className="absolute left-5 top-5 rounded-full bg-accent px-2 py-0.5 text-xs text-white">
           {badge}
         </span>
       )}
@@ -28,12 +28,12 @@ export function ProductCard({ product, badge }: { product: ProductCardData; badg
           className="aspect-square w-full rounded-md object-cover"
         />
       ) : (
-        <div className="aspect-square w-full rounded-md bg-black/5 dark:bg-white/10" />
+        <div className="aspect-square w-full rounded-md bg-black/5" />
       )}
       <p className="line-clamp-2 text-sm font-medium">{product.name}</p>
       <p className="text-sm font-semibold">{Number(product.price).toLocaleString("th-TH")} บาท</p>
       {(product.monk || product.province) && (
-        <p className="text-xs text-black/60 dark:text-white/60">
+        <p className="text-xs text-black/60">
           {product.monk?.name}
           {product.province && ` · จ.${product.province.nameTh}`}
         </p>

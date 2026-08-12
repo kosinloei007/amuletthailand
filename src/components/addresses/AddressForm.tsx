@@ -42,7 +42,7 @@ export function AddressForm({
             type="text"
             required
             defaultValue={defaultValues?.fullName}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -55,7 +55,7 @@ export function AddressForm({
             type="tel"
             required
             defaultValue={defaultValues?.phone}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
       </div>
@@ -70,7 +70,7 @@ export function AddressForm({
           required
           rows={2}
           defaultValue={defaultValues?.address}
-          className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+          className="rounded-md border border-black/10 px-3 py-2"
         />
       </div>
 
@@ -84,7 +84,7 @@ export function AddressForm({
             name="subDistrict"
             type="text"
             defaultValue={defaultValues?.subDistrict ?? ""}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -96,7 +96,7 @@ export function AddressForm({
             name="district"
             type="text"
             defaultValue={defaultValues?.district ?? ""}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -108,7 +108,7 @@ export function AddressForm({
             name="province"
             type="text"
             defaultValue={defaultValues?.province ?? ""}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -120,7 +120,7 @@ export function AddressForm({
             name="postalCode"
             type="text"
             defaultValue={defaultValues?.postalCode ?? ""}
-            className="rounded-md border border-black/10 px-3 py-2 dark:border-white/20"
+            className="rounded-md border border-black/10 px-3 py-2"
           />
         </div>
       </div>
@@ -135,7 +135,7 @@ export function AddressForm({
       <button
         type="submit"
         disabled={isPending}
-        className="w-fit rounded-md bg-foreground px-4 py-2 text-background disabled:opacity-60"
+        className="w-fit rounded-md bg-primary px-4 py-2 text-white disabled:opacity-60"
       >
         {isPending ? "กำลังบันทึก..." : submitLabel}
       </button>

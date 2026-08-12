@@ -9,6 +9,7 @@ export type ThemeSeed = {
   textColor: string;
   fontFamily: string;
   layoutStyle: string;
+  isPreset: boolean;
 };
 
 export const themes: ThemeSeed[] = [
@@ -21,6 +22,7 @@ export const themes: ThemeSeed[] = [
     textColor: "#2b2118",
     fontFamily: "Noto Serif Thai",
     layoutStyle: "gold-temple",
+    isPreset: true,
   },
   {
     name: "มินิมอลขาว-ดำ",
@@ -31,6 +33,7 @@ export const themes: ThemeSeed[] = [
     textColor: "#111111",
     fontFamily: "Noto Sans Thai",
     layoutStyle: "minimal",
+    isPreset: true,
   },
   {
     name: "แดง-มงคล",
@@ -41,5 +44,6 @@ export const themes: ThemeSeed[] = [
     textColor: "#2b1010",
     fontFamily: "Noto Serif Thai",
     layoutStyle: "classic",
+    isPreset: true,
   },
 ];
