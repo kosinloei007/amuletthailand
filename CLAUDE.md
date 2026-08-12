@@ -26,10 +26,10 @@
 | Server (TCP, ใช้กับ Prisma/EF Core) | `127.0.0.1,1433` |
 | Server name (สำหรับ SSMS/sqlcmd ผ่าน named pipe) | `DESKTOP-785IB33\MSSQLSERVER2017` |
 | Login | `amulet_dev` |
-| Password | ดูใน `.env.local` (ไม่ commit ลง git) |
+| Password | ดูใน `.env` (ไม่ commit ลง git) |
 | Database | `AmuletTK` |
 
-Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใน `.env.local` แล้ว (ดูรูปแบบได้จาก `.env.example`) ห้าม hardcode password ลงไฟล์ที่ commit เข้า git เด็ดขาด
+Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใน `.env` แล้ว (ดูรูปแบบได้จาก `.env.example`) ห้าม hardcode password ลงไฟล์ที่ commit เข้า git เด็ดขาด
 
 **Prisma setup ที่ทำไว้แล้ว:**
 - `prisma/schema.prisma` มี model ครบตาม DDL ใน [docs/database.md](./docs/database.md) (field เป็น camelCase, map กลับไปหาชื่อ table/column ตัวจริงด้วย `@map`/`@@map`)
@@ -38,6 +38,15 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - Generated client อยู่ที่ `src/generated/prisma` (gitignored, รัน `npx prisma generate` ใหม่ได้เสมอ)
 - Index บางตัวที่ DDL ต้องการเป็น filtered/partial index (`UX_MemberTiers_Tenant_Default`, `IX_Products_Tenant_Active_CreatedAt`) ซึ่ง Prisma schema ยังไม่รองรับบน SQL Server — สร้างด้วย raw SQL แยกไว้แล้วในฐาน dev แต่ **ถ้า reset/push schema ใหม่ในเครื่องอื่นต้องรัน SQL 2 statement นี้เพิ่มเอง** (ดูคอมเมนต์ในโมเดล `MemberTier`/`Product` ใน schema.prisma)
 - ใช้ `npx prisma db push` สำหรับ dev sync (ยังไม่ตั้ง migration history อย่างเป็นทางการด้วย `prisma migrate dev` — ค่อยเริ่มเมื่อ schema เริ่มนิ่งแล้ว)
+
+**Auth/สิทธิ์ผู้ใช้ที่ทำไว้แล้ว** (ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md) ก่อนแก้ไขส่วนนี้เสมอ):
+- ใช้ **custom session แบบ JWT** (`jose` + httpOnly cookie ชื่อ `session`) ไม่ได้ใช้ NextAuth.js — เหตุผล: schema `Users`/multi-tenant/role ในโปรเจกต์นี้ออกแบบเองทั้งหมด ไม่ fit กับ adapter ของ NextAuth ตรงๆ และตอนทำ (2026-08) Next.js เป็น v16 ซึ่งใหม่มาก ยังไม่อยากเสี่ยงเรื่อง compatibility กับ next-auth
+- รหัสผ่าน hash ด้วย `bcryptjs` (`src/lib/auth/password.ts`) ตาม policy ใน docs/database.md
+- Session helper อยู่ที่ `src/lib/auth/session.ts` (`getSession()`, `setSessionCookie()`, `clearSessionCookie()`, `verifySessionToken()`) ต้องมี `AUTH_SECRET` ใน `.env` เสมอ (generate ด้วย `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`)
+- Server actions หลักอยู่ที่ `src/lib/auth/actions.ts`: `loginAction`, `registerAction`, `logoutAction`, `requireSession()` (helper เรียกใน server component เพื่อบังคับต้อง login แล้ว redirect กลับ `/login` ถ้ายัง)
+- **Next.js 16 เปลี่ยนชื่อ convention จาก `middleware.ts` เป็น `proxy.ts`** (export ฟังก์ชันชื่อ `proxy` แทน `middleware`) — ใช้ `src/proxy.ts` ทำ route protection: บังคับ login ทุก path ใต้ `/admin/**` และ `/account/**`, เช็ก role `tenant_admin`/`super_admin` เพิ่มสำหรับ `/admin/**`
+- Tenant resolution ยังเป็น placeholder อยู่ที่ `src/lib/tenant.ts` (`getCurrentTenant()` hardcode slug `amulet-thailand`) — ต้องเปลี่ยนเป็น resolve จาก subdomain/host จริงตอนทำระบบธีม (roadmap ข้อ 5)
+- Dev/test login (จาก `prisma/seed-data/users.ts`, รหัสผ่านเดียวกันหมด `Passw0rd!`): `superadmin@amulet-thailand.demo` (super_admin), `admin@amulet-thailand.demo` (tenant_admin), `member@amulet-thailand.demo` (member) — ทดสอบผ่านครบทุก role + register/login/logout/duplicate-email/wrong-password ใน browser จริงแล้ว (2026-08-12)
 
 - Image: เก็บ path รูปใน object storage (S3-compatible) — ตอน dev ใช้ placeholder ก่อน
 - State/filter: URL query params เป็นหลัก (เช่น `/products?province=phitsanulok&monk=luang-pho-koon`) เพื่อให้แชร์ลิงก์กรองได้และ SEO friendly

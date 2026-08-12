@@ -1,10 +1,13 @@
 import { prisma } from "../src/lib/prisma";
+import { hashPassword } from "../src/lib/auth/password";
 import { provinces } from "./seed-data/provinces";
 import { monks } from "./seed-data/monks";
 import { themes } from "./seed-data/themes";
 import { demoTenant } from "./seed-data/tenant";
 import { categories } from "./seed-data/categories";
 import { products } from "./seed-data/products";
+import { memberTiers } from "./seed-data/member-tiers";
+import { DEV_PASSWORD, users } from "./seed-data/users";
 
 async function seedProvinces() {
   for (const province of provinces) {
@@ -162,6 +165,62 @@ async function seedProducts(tenantId: number) {
   console.log(`Seeded ${products.length} products`);
 }
 
+async function seedMemberTiers(tenantId: number) {
+  for (const tier of memberTiers) {
+    const existing = await prisma.memberTier.findFirst({ where: { tenantId, name: tier.name } });
+    const data = {
+      tenantId,
+      name: tier.name,
+      sortOrder: tier.sortOrder,
+      discountType: tier.discountType,
+      discountValue: tier.discountValue,
+      freeShippingEnabled: tier.freeShippingEnabled,
+      freeShippingMinAmount: tier.freeShippingMinAmount,
+      isDefault: tier.isDefault,
+    };
+    if (existing) {
+      await prisma.memberTier.update({ where: { memberTierId: existing.memberTierId }, data });
+    } else {
+      await prisma.memberTier.create({ data });
+    }
+  }
+  console.log(`Seeded ${memberTiers.length} member tiers`);
+}
+
+async function seedUsers(tenantId: number) {
+  const passwordHash = await hashPassword(DEV_PASSWORD);
+  const allTiers = await prisma.memberTier.findMany({ where: { tenantId }, select: { memberTierId: true, name: true } });
+  const tierIdByName = new Map(allTiers.map((t) => [t.name, t.memberTierId]));
+
+  for (const user of users) {
+    const memberTierId = user.memberTierName ? tierIdByName.get(user.memberTierName) : undefined;
+    if (user.memberTierName && !memberTierId) {
+      throw new Error(`ไม่พบ member tier ชื่อ "${user.memberTierName}" สำหรับผู้ใช้ "${user.email}"`);
+    }
+
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        phone: user.phone,
+        fullName: user.fullName,
+        role: user.role,
+        tenantId: user.belongsToTenant ? tenantId : null,
+        memberTierId: memberTierId ?? null,
+      },
+      create: {
+        email: user.email,
+        phone: user.phone,
+        passwordHash,
+        fullName: user.fullName,
+        role: user.role,
+        tenantId: user.belongsToTenant ? tenantId : null,
+        memberTierId: memberTierId ?? null,
+      },
+    });
+  }
+  console.log(`Seeded ${users.length} users (dev password: "${DEV_PASSWORD}")`);
+}
+
 async function main() {
   await seedProvinces();
   await seedMonks();
@@ -169,6 +228,8 @@ async function main() {
   const tenant = await seedTenant();
   await seedCategories();
   await seedProducts(tenant.tenantId);
+  await seedMemberTiers(tenant.tenantId);
+  await seedUsers(tenant.tenantId);
 }
 
 main()
