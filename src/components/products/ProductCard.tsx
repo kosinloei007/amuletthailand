@@ -9,12 +9,17 @@ export type ProductCardData = {
   province?: { nameTh: string } | null;
 };
 
-export function ProductCard({ product }: { product: ProductCardData }) {
+export function ProductCard({ product, badge }: { product: ProductCardData; badge?: string }) {
   return (
     <Link
       href={`/products/${product.productId}`}
-      className="flex flex-col gap-2 rounded-lg border border-black/10 p-3 dark:border-white/20"
+      className="relative flex flex-col gap-2 rounded-lg border border-black/10 p-3 dark:border-white/20"
     >
+      {badge && (
+        <span className="absolute left-5 top-5 rounded-full bg-foreground px-2 py-0.5 text-xs text-background">
+          {badge}
+        </span>
+      )}
       {product.images[0] ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

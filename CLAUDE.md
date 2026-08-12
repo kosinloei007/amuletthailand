@@ -69,7 +69,7 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 
 ## ฟีเจอร์หลักที่ต้องมี
 
-- [ ] หน้าหลัก (Home) — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md)
+- [x] หน้าหลัก (Home) — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md) (เสร็จแล้ว 2026-08-12 — hero, แถบ filter ด่วน, พระเครื่องเข้ามาใหม่ (ซ่อนถ้าว่าง), สินค้าขายดี (ซ่อนถ้าว่าง — ยังไม่มี order จริงจนกว่าจะทำ checkout), แนะนำตามจังหวัด/หลวงพ่อ; หน้านี้ตั้ง `export const revalidate = 60` เพราะ Next.js จะ static-prerender ทิ้งไว้เฉยๆ ถ้าไม่ตั้ง ทำให้สินค้าใหม่ไม่อัปเดต; มี `GET /api/products?sort=newest&days=N` แยกไว้ตามที่ docs ขอ)
 - [x] หน้ารายการสินค้า พร้อม filter แบบ multi-select: จังหวัด, หลวงพ่อ/วัด, หมวดหมู่, ช่วงราคา — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md) (`/products` เสร็จแล้ว 2026-08-12 — filter เป็น plain GET form สะท้อนใน URL query string ตรงตาม convention)
 - [x] หน้ารายละเอียดสินค้า, หน้าโปรไฟล์หลวงพ่อ/วัด (`/monks/[slug]`), หน้าตามจังหวัด (`/provinces/[slug]`) (เสร็จแล้ว 2026-08-12 — gallery เรียงรูปพระก่อนแล้วตามด้วยรูปใบรับประกันตาม docs/database.md, การ์ดสินค้าใช้ shared component `ProductCard` ร่วมกันทั้ง 3 หน้า)
 - [ ] ตะกร้าสินค้า + checkout + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ + payment gateway — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
@@ -87,7 +87,7 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 
 ## Roadmap แนะนำ
 
-1. Setup โปรเจกต์ + data model + seed ข้อมูลตัวอย่าง (จังหวัด, หลวงพ่อ, สินค้า) — [docs/database.md](./docs/database.md)
+1. ✅ Setup โปรเจกต์ + data model + seed ข้อมูลตัวอย่าง (จังหวัด, หลวงพ่อ, สินค้า) — [docs/database.md](./docs/database.md)
 2. ✅ ระบบ Login/สิทธิ์ผู้ใช้ (Admin/สมาชิก/Guest) + หน้าจัดการที่อยู่สมาชิก + ตั้งค่าระดับสมาชิก (MemberTier) — [docs/auth-and-membership.md](./docs/auth-and-membership.md)
 3. ✅ หน้ารายการสินค้า + ระบบ filter จังหวัด/หลวงพ่อ — [docs/home-and-catalog.md](./docs/home-and-catalog.md)
 4. ✅ หน้ารายละเอียดสินค้า + หน้าโปรไฟล์หลวงพ่อ/จังหวัด
