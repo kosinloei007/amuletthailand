@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireSession, logoutAction } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 
@@ -45,6 +46,13 @@ export default async function AccountPage() {
           </div>
         )}
       </dl>
+
+      <Link
+        href="/account/addresses"
+        className="w-fit rounded-md border border-black/20 px-4 py-2 dark:border-white/30"
+      >
+        จัดการที่อยู่จัดส่ง
+      </Link>
 
       <form action={logoutAction}>
         <button

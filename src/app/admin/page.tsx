@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireSession, logoutAction } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 
@@ -42,6 +43,15 @@ export default async function AdminDashboardPage() {
           <p className="text-3xl font-semibold">{orderCount}</p>
         </div>
       </div>
+
+      {session.role === "tenant_admin" && (
+        <Link
+          href="/admin/member-tiers"
+          className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm dark:border-white/30"
+        >
+          จัดการระดับสมาชิก
+        </Link>
+      )}
     </main>
   );
 }

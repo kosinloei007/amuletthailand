@@ -47,6 +47,8 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - **Next.js 16 เปลี่ยนชื่อ convention จาก `middleware.ts` เป็น `proxy.ts`** (export ฟังก์ชันชื่อ `proxy` แทน `middleware`) — ใช้ `src/proxy.ts` ทำ route protection: บังคับ login ทุก path ใต้ `/admin/**` และ `/account/**`, เช็ก role `tenant_admin`/`super_admin` เพิ่มสำหรับ `/admin/**`
 - Tenant resolution ยังเป็น placeholder อยู่ที่ `src/lib/tenant.ts` (`getCurrentTenant()` hardcode slug `amulet-thailand`) — ต้องเปลี่ยนเป็น resolve จาก subdomain/host จริงตอนทำระบบธีม (roadmap ข้อ 5)
 - Dev/test login (จาก `prisma/seed-data/users.ts`, รหัสผ่านเดียวกันหมด `Passw0rd!`): `superadmin@amulet-thailand.demo` (super_admin), `admin@amulet-thailand.demo` (tenant_admin), `member@amulet-thailand.demo` (member) — ทดสอบผ่านครบทุก role + register/login/logout/duplicate-email/wrong-password ใน browser จริงแล้ว (2026-08-12)
+- **ที่อยู่จัดส่งสมาชิก** (`/account/addresses`): CRUD เต็ม, บังคับมี default ที่อยู่ได้แค่ 1 รายการต่อคนในระดับ application (DB ไม่มี unique constraint ตรงนี้) — logic อยู่ที่ `src/lib/addresses/actions.ts` ลบที่อยู่ default แล้วจะ auto-promote ที่อยู่ล่าสุดที่เหลือขึ้นเป็น default แทน
+- **Admin ตั้งค่า MemberTier** (`/admin/member-tiers`, เฉพาะ role `tenant_admin`): CRUD เต็ม, logic อยู่ที่ `src/lib/member-tiers/actions.ts` — บังคับกฎ "ต้องมี default tier เดียวเสมอ" ในระดับ application: ห้ามลบ tier ที่เป็น default, ห้าม uncheck default โดยตรง (ต้องไปกด "ตั้งเป็นค่าเริ่มต้น" ที่ tier อื่นแทน), ห้ามลบ tier ที่ยังมีสมาชิกผูกอยู่ — ทดสอบ guard ทั้งหมดผ่านใน browser จริงแล้ว (2026-08-12)
 
 - Image: เก็บ path รูปใน object storage (S3-compatible) — ตอน dev ใช้ placeholder ก่อน
 - State/filter: URL query params เป็นหลัก (เช่น `/products?province=phitsanulok&monk=luang-pho-koon`) เพื่อให้แชร์ลิงก์กรองได้และ SEO friendly
@@ -71,7 +73,7 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 - [ ] หน้ารายการสินค้า พร้อม filter แบบ multi-select: จังหวัด, หลวงพ่อ/วัด, หมวดหมู่, ช่วงราคา — ดู [docs/home-and-catalog.md](./docs/home-and-catalog.md)
 - [ ] หน้ารายละเอียดสินค้า, หน้าโปรไฟล์หลวงพ่อ/วัด (`/monks/[slug]`), หน้าตามจังหวัด (`/provinces/[slug]`)
 - [ ] ตะกร้าสินค้า + checkout + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ + payment gateway — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
-- [ ] ระบบ Login แยก Admin/สมาชิก/Guest + ที่อยู่ default + ระดับสมาชิก (MemberTier) พร้อมส่วนลด/จัดส่งฟรีตามระดับ — ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md)
+- [x] ระบบ Login แยก Admin/สมาชิก/Guest + ที่อยู่ default + ระดับสมาชิก (MemberTier) พร้อมส่วนลด/จัดส่งฟรีตามระดับ — ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md) (ทำ auth + จัดการที่อยู่สมาชิก + admin ตั้งค่า MemberTier เสร็จแล้ว 2026-08-12 — ส่วนที่เหลือคือ**เอาส่วนลด/จัดส่งฟรีไปใช้จริงตอน checkout** ซึ่งอยู่ใน roadmap ข้อ 6/บรรทัดถัดไปแล้ว)
 - [ ] ราคาขาย default จากต้นทุน (ปรับ % ได้) + โปรโมชั่นส่วนลดทั้งร้านตามช่วงเวลา — ดู [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
 - [ ] ระบบเปลี่ยนธีมร้าน — ดู [docs/theming.md](./docs/theming.md)
 - [ ] ระบบผู้ขายหลายราย (ถ้าต้องการรองรับ marketplace ไม่ใช่แค่ร้านเดียว)
@@ -86,7 +88,7 @@ Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใ�
 ## Roadmap แนะนำ
 
 1. Setup โปรเจกต์ + data model + seed ข้อมูลตัวอย่าง (จังหวัด, หลวงพ่อ, สินค้า) — [docs/database.md](./docs/database.md)
-2. ระบบ Login/สิทธิ์ผู้ใช้ (Admin/สมาชิก/Guest) + หน้าจัดการที่อยู่สมาชิก + ตั้งค่าระดับสมาชิก (MemberTier) — [docs/auth-and-membership.md](./docs/auth-and-membership.md)
+2. ✅ ระบบ Login/สิทธิ์ผู้ใช้ (Admin/สมาชิก/Guest) + หน้าจัดการที่อยู่สมาชิก + ตั้งค่าระดับสมาชิก (MemberTier) — [docs/auth-and-membership.md](./docs/auth-and-membership.md)
 3. หน้ารายการสินค้า + ระบบ filter จังหวัด/หลวงพ่อ — [docs/home-and-catalog.md](./docs/home-and-catalog.md)
 4. หน้ารายละเอียดสินค้า + หน้าโปรไฟล์หลวงพ่อ/จังหวัด
 5. ระบบธีม + หน้าตั้งค่าร้าน — [docs/theming.md](./docs/theming.md)
