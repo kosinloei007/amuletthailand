@@ -1,0 +1,317 @@
+// Prisma schema — ตรงกับ DDL ใน docs/database.md
+// ชื่อ field เป็น camelCase (แนวทาง Prisma/TS) แต่ map กลับไปหาชื่อ column/table
+// แบบ PascalCase ที่ตรงกับ DDL จริงในฐานข้อมูลผ่าน @map / @@map
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+// ===== Tenants (ร้านค้าแต่ละราย) =====
+model Tenant {
+  tenantId             Int      @id @default(autoincrement()) @map("TenantId")
+  shopName             String   @map("ShopName") @db.NVarChar(200)
+  slug                 String   @unique @map("Slug") @db.NVarChar(100)
+  ownerContact         String?  @map("OwnerContact") @db.NVarChar(200)
+  themeId              Int?     @map("ThemeId")
+  defaultMarkupPercent Decimal  @default(30.00) @map("DefaultMarkupPercent") @db.Decimal(5, 2)
+  createdAt            DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+  updatedAt            DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
+
+  theme            Theme?            @relation(fields: [themeId], references: [themeId], onDelete: NoAction, onUpdate: NoAction)
+  memberTiers      MemberTier[]
+  storePromotions  StorePromotion[]
+  users            User[]
+  products         Product[]
+  paymentInfo      PaymentInfo?
+  notifyConfig     NotifyConfig?
+  orders           Order[]
+
+  @@map("Tenants")
+}
+
+// ===== Themes (ธีมของร้าน) =====
+model Theme {
+  themeId         Int      @id @default(autoincrement()) @map("ThemeId")
+  name            String   @map("Name") @db.NVarChar(100)
+  primaryColor    String   @map("PrimaryColor") @db.NVarChar(20)
+  accentColor     String   @map("AccentColor") @db.NVarChar(20)
+  backgroundColor String   @map("BackgroundColor") @db.NVarChar(20)
+  surfaceColor    String   @map("SurfaceColor") @db.NVarChar(20)
+  textColor       String   @map("TextColor") @db.NVarChar(20)
+  logoUrl         String?  @map("LogoUrl") @db.NVarChar(500)
+  fontFamily      String?  @map("FontFamily") @db.NVarChar(100)
+  layoutStyle     String   @default("classic") @map("LayoutStyle") @db.NVarChar(50) // classic | minimal | gold-temple
+  createdAt       DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+
+  tenants Tenant[]
+
+  @@map("Themes")
+}
+
+// ===== Provinces (จังหวัด — seed 77 จังหวัด) =====
+model Province {
+  provinceId Int     @id @default(autoincrement()) @map("ProvinceId")
+  nameTh     String  @map("NameTh") @db.NVarChar(100)
+  nameEn     String  @map("NameEn") @db.NVarChar(100)
+  slug       String  @unique @map("Slug") @db.NVarChar(100)
+  region     String? @map("Region") @db.NVarChar(50)
+
+  monks    Monk[]
+  products Product[]
+
+  @@map("Provinces")
+}
+
+// ===== Monks (หลวงพ่อ/หลวงปู่/พระเกจิ) =====
+model Monk {
+  monkId     Int      @id @default(autoincrement()) @map("MonkId")
+  name       String   @map("Name") @db.NVarChar(200)
+  slug       String   @unique @map("Slug") @db.NVarChar(150)
+  templeName String?  @map("TempleName") @db.NVarChar(200)
+  provinceId Int?     @map("ProvinceId")
+  bio        String?  @map("Bio") @db.NVarChar(Max)
+  createdAt  DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+
+  province Province? @relation(fields: [provinceId], references: [provinceId], onDelete: NoAction, onUpdate: NoAction)
+  products Product[]
+
+  @@index([provinceId])
+  @@map("Monks")
+}
+
+// ===== Categories (หมวดหมู่พระ) =====
+model Category {
+  categoryId Int    @id @default(autoincrement()) @map("CategoryId")
+  name       String @map("Name") @db.NVarChar(100)
+  slug       String @unique @map("Slug") @db.NVarChar(100)
+
+  products Product[]
+
+  @@map("Categories")
+}
+
+// ===== MemberTiers (ระดับสมาชิก — หลายระดับต่อร้าน) =====
+// หมายเหตุ: ต้องมี unique filtered index (TenantId) WHERE IsDefault = 1 เพิ่มด้วย raw SQL
+// หลัง migrate เพราะ Prisma ไม่รองรับ filtered/partial unique index บน SQL Server
+model MemberTier {
+  memberTierId          Int      @id @default(autoincrement()) @map("MemberTierId")
+  tenantId              Int      @map("TenantId")
+  name                  String   @map("Name") @db.NVarChar(100)
+  sortOrder             Int      @default(0) @map("SortOrder")
+  discountType          String   @default("none") @map("DiscountType") @db.NVarChar(20) // percentage | fixed_amount | none
+  discountValue         Decimal  @default(0) @map("DiscountValue") @db.Decimal(10, 2)
+  freeShippingEnabled   Boolean  @default(false) @map("FreeShippingEnabled")
+  freeShippingMinAmount Decimal? @map("FreeShippingMinAmount") @db.Decimal(10, 2)
+  isDefault             Boolean  @default(false) @map("IsDefault")
+
+  tenant       Tenant  @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  users        User[]
+  ordersApplied Order[] @relation("OrderAppliedMemberTier")
+
+  @@index([tenantId])
+  @@map("MemberTiers")
+}
+
+// ===== StorePromotions (ส่วนลดทั้งร้านตามช่วงเวลา) =====
+model StorePromotion {
+  storePromotionId Int       @id @default(autoincrement()) @map("StorePromotionId")
+  tenantId         Int       @map("TenantId")
+  name             String    @map("Name") @db.NVarChar(200)
+  discountType     String    @map("DiscountType") @db.NVarChar(20) // percentage | fixed_amount
+  discountValue    Decimal   @map("DiscountValue") @db.Decimal(10, 2)
+  scheduleType     String    @map("ScheduleType") @db.NVarChar(20) // recurring_month | date_range
+  recurringMonth   Int?      @map("RecurringMonth") @db.TinyInt // 1-12, ใช้เมื่อ scheduleType = "recurring_month"
+  startDate        DateTime? @map("StartDate") @db.Date
+  endDate          DateTime? @map("EndDate") @db.Date
+  isActive         Boolean   @default(true) @map("IsActive")
+  createdAt        DateTime  @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+  updatedAt        DateTime  @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
+
+  tenant        Tenant  @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  ordersApplied Order[] @relation("OrderAppliedStorePromotion")
+
+  @@index([tenantId, isActive])
+  @@map("StorePromotions")
+}
+
+// ===== Users (แอดมิน/สมาชิก) =====
+model User {
+  userId       Int      @id @default(autoincrement()) @map("UserId")
+  tenantId     Int?     @map("TenantId") // NULL ได้สำหรับ SuperAdmin ที่ไม่ผูกร้านใดร้านหนึ่ง
+  email        String   @unique @map("Email") @db.NVarChar(200)
+  phone        String?  @map("Phone") @db.NVarChar(20)
+  passwordHash String   @map("PasswordHash") @db.NVarChar(300)
+  fullName     String   @map("FullName") @db.NVarChar(200)
+  role         String   @default("member") @map("Role") @db.NVarChar(20) // super_admin | tenant_admin | member
+  memberTierId Int?     @map("MemberTierId") // ใช้เฉพาะ role = "member"
+  isActive     Boolean  @default(true) @map("IsActive")
+  createdAt    DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+  updatedAt    DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
+
+  tenant     Tenant?       @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  memberTier MemberTier?   @relation(fields: [memberTierId], references: [memberTierId], onDelete: NoAction, onUpdate: NoAction)
+  addresses  UserAddress[]
+  orders     Order[]
+
+  @@index([tenantId, role])
+  @@index([memberTierId])
+  @@map("Users")
+}
+
+// ===== UserAddresses (ที่อยู่จัดส่ง default ของสมาชิก) =====
+model UserAddress {
+  userAddressId Int     @id @default(autoincrement()) @map("UserAddressId")
+  userId        Int     @map("UserId")
+  fullName      String  @map("FullName") @db.NVarChar(200)
+  phone         String  @map("Phone") @db.NVarChar(20)
+  address       String  @map("Address") @db.NVarChar(500)
+  subDistrict   String? @map("SubDistrict") @db.NVarChar(100)
+  district      String? @map("District") @db.NVarChar(100)
+  province      String? @map("Province") @db.NVarChar(100)
+  postalCode    String? @map("PostalCode") @db.NVarChar(10)
+  isDefault     Boolean @default(true) @map("IsDefault")
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId, isDefault])
+  @@map("UserAddresses")
+}
+
+// ===== Products (พระเครื่อง) =====
+// หมายเหตุ: DDL มี filtered index (TenantId, CreatedAt DESC) WHERE IsActive = 1
+// เพิ่มด้วย raw SQL หลัง migrate เพราะ Prisma ไม่รองรับ filtered index บน SQL Server
+model Product {
+  productId       Int      @id @default(autoincrement()) @map("ProductId")
+  tenantId        Int      @map("TenantId")
+  name            String   @map("Name") @db.NVarChar(300)
+  description     String?  @map("Description") @db.NVarChar(Max)
+  costPrice       Decimal? @map("CostPrice") @db.Decimal(10, 2)
+  price           Decimal  @map("Price") @db.Decimal(10, 2)
+  stock           Int      @default(0) @map("Stock")
+  provinceId      Int?     @map("ProvinceId")
+  monkId          Int?     @map("MonkId")
+  categoryId      Int?     @map("CategoryId")
+  templeName      String?  @map("TempleName") @db.NVarChar(200)
+  era             String?  @map("Era") @db.NVarChar(100)
+  hasCertificate  Boolean  @default(false) @map("HasCertificate")
+  certificateInfo String?  @map("CertificateInfo") @db.NVarChar(500) // กรอกเฉพาะเมื่อ hasCertificate = true
+  isActive        Boolean  @default(true) @map("IsActive")
+  createdAt       DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+  updatedAt       DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  province Province?      @relation(fields: [provinceId], references: [provinceId], onDelete: NoAction, onUpdate: NoAction)
+  monk     Monk?          @relation(fields: [monkId], references: [monkId], onDelete: NoAction, onUpdate: NoAction)
+  category Category?      @relation(fields: [categoryId], references: [categoryId], onDelete: NoAction, onUpdate: NoAction)
+  images   ProductImage[]
+  orderItems OrderItem[]
+
+  // ไม่ต้องมี @@index([tenantId, createdAt]) ตรงนี้ เพราะใช้ filtered index
+  // IX_Products_Tenant_Active_CreatedAt (TenantId, CreatedAt DESC) WHERE IsActive = 1
+  // ที่สร้างด้วย raw SQL แทน (ดูหมายเหตุด้านบน) ครอบคลุม query pattern นี้อยู่แล้ว
+  @@index([provinceId])
+  @@index([monkId])
+  @@index([categoryId])
+  @@map("Products")
+}
+
+// ===== ProductImages (รูปสินค้า — รวมรูปพระและรูปใบรับประกัน) =====
+model ProductImage {
+  productImageId Int    @id @default(autoincrement()) @map("ProductImageId")
+  productId      Int    @map("ProductId")
+  imageUrl       String @map("ImageUrl") @db.NVarChar(500)
+  imageType      String @default("product") @map("ImageType") @db.NVarChar(20) // "product" | "certificate"
+  sortOrder      Int    @default(0) @map("SortOrder")
+
+  product Product @relation(fields: [productId], references: [productId], onDelete: Cascade)
+
+  @@index([productId, imageType, sortOrder])
+  @@map("ProductImages")
+}
+
+// ===== PaymentInfos (บัญชีรับโอนต่อร้าน) =====
+model PaymentInfo {
+  paymentInfoId Int     @id @default(autoincrement()) @map("PaymentInfoId")
+  tenantId      Int     @unique @map("TenantId")
+  bankName      String  @map("BankName") @db.NVarChar(100)
+  accountName   String  @map("AccountName") @db.NVarChar(200)
+  accountNumber String  @map("AccountNumber") @db.NVarChar(50)
+  promptPayId   String? @map("PromptPayId") @db.NVarChar(50)
+  qrImageUrl    String? @map("QrImageUrl") @db.NVarChar(500)
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId])
+
+  @@map("PaymentInfos")
+}
+
+// ===== NotifyConfigs (ตั้งค่าแจ้งเตือนต่อร้าน) =====
+model NotifyConfig {
+  notifyConfigId   Int     @id @default(autoincrement()) @map("NotifyConfigId")
+  tenantId         Int     @unique @map("TenantId")
+  telegramEnabled  Boolean @default(false) @map("TelegramEnabled")
+  telegramBotToken String? @map("TelegramBotToken") @db.NVarChar(200)
+  telegramChatId   String? @map("TelegramChatId") @db.NVarChar(100)
+  emailEnabled     Boolean @default(false) @map("EmailEnabled")
+  emailToAddress   String? @map("EmailToAddress") @db.NVarChar(200)
+
+  tenant Tenant @relation(fields: [tenantId], references: [tenantId])
+
+  @@map("NotifyConfigs")
+}
+
+// ===== Orders (คำสั่งซื้อ) =====
+model Order {
+  orderId                  Int      @id @default(autoincrement()) @map("OrderId")
+  tenantId                 Int      @map("TenantId")
+  userId                   Int?     @map("UserId") // NULL = guest checkout
+  orderNumber              String   @unique @map("OrderNumber") @db.NVarChar(50)
+  subtotalAmount           Decimal  @map("SubtotalAmount") @db.Decimal(10, 2)
+  discountAmount           Decimal  @default(0) @map("DiscountAmount") @db.Decimal(10, 2)
+  shippingFee              Decimal  @default(0) @map("ShippingFee") @db.Decimal(10, 2)
+  totalAmount              Decimal  @map("TotalAmount") @db.Decimal(10, 2)
+  appliedMemberTierId      Int?     @map("AppliedMemberTierId")
+  appliedStorePromotionId  Int?     @map("AppliedStorePromotionId")
+  fullName                 String   @map("FullName") @db.NVarChar(200)
+  phone                    String   @map("Phone") @db.NVarChar(20)
+  address                  String   @map("Address") @db.NVarChar(500)
+  subDistrict              String?  @map("SubDistrict") @db.NVarChar(100)
+  district                 String?  @map("District") @db.NVarChar(100)
+  province                 String?  @map("Province") @db.NVarChar(100)
+  postalCode               String?  @map("PostalCode") @db.NVarChar(10)
+  note                     String?  @map("Note") @db.NVarChar(500)
+  paymentSlipUrl           String?  @map("PaymentSlipUrl") @db.NVarChar(500)
+  slipVerifyStatus         String   @default("pending") @map("SlipVerifyStatus") @db.NVarChar(20) // pending | matched | mismatched | unreadable
+  status                   String   @default("pending_verify") @map("Status") @db.NVarChar(20) // pending_verify | verified | shipped | cancelled
+  createdAt                DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+  updatedAt                DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
+
+  tenant                Tenant          @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  user                  User?           @relation(fields: [userId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  appliedMemberTier     MemberTier?     @relation("OrderAppliedMemberTier", fields: [appliedMemberTierId], references: [memberTierId], onDelete: NoAction, onUpdate: NoAction)
+  appliedStorePromotion StorePromotion? @relation("OrderAppliedStorePromotion", fields: [appliedStorePromotionId], references: [storePromotionId], onDelete: NoAction, onUpdate: NoAction)
+  items                 OrderItem[]
+
+  @@index([tenantId, status])
+  @@index([phone, orderNumber])
+  @@map("Orders")
+}
+
+// ===== OrderItems (รายการสินค้าในออร์เดอร์) =====
+model OrderItem {
+  orderItemId Int     @id @default(autoincrement()) @map("OrderItemId")
+  orderId     Int     @map("OrderId")
+  productId   Int     @map("ProductId")
+  productName String  @map("ProductName") @db.NVarChar(300) // เก็บชื่อ ณ เวลาซื้อ กันสินค้าถูกแก้ชื่อทีหลัง
+  unitPrice   Decimal @map("UnitPrice") @db.Decimal(10, 2)
+  quantity    Int     @default(1) @map("Quantity")
+
+  order   Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [productId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("OrderItems")
+}

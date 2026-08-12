@@ -31,6 +31,14 @@
 
 Connection string เต็มเก็บไว้ที่ `DATABASE_URL` ใน `.env.local` แล้ว (ดูรูปแบบได้จาก `.env.example`) ห้าม hardcode password ลงไฟล์ที่ commit เข้า git เด็ดขาด
 
+**Prisma setup ที่ทำไว้แล้ว:**
+- `prisma/schema.prisma` มี model ครบตาม DDL ใน [docs/database.md](./docs/database.md) (field เป็น camelCase, map กลับไปหาชื่อ table/column ตัวจริงด้วย `@map`/`@@map`)
+- ใช้ Prisma **v7** ซึ่งบังคับต้องส่ง **driver adapter** เข้า `PrismaClient` เสมอ (ต่างจาก v5/v6 ที่ต่อ DB ตรงจาก `datasource.url` ได้เลย) — สำหรับ SQL Server ใช้ `@prisma/adapter-mssql` ห้ามลืม instantiate ด้วย adapter มิฉะนั้นจะได้ error `PrismaClientInitializationError`
+- ใช้ Prisma client ผ่าน singleton ที่ `src/lib/prisma.ts` (`import { prisma } from "@/lib/prisma"`) ไม่ต้อง `new PrismaClient()` เองในแต่ละไฟล์
+- Generated client อยู่ที่ `src/generated/prisma` (gitignored, รัน `npx prisma generate` ใหม่ได้เสมอ)
+- Index บางตัวที่ DDL ต้องการเป็น filtered/partial index (`UX_MemberTiers_Tenant_Default`, `IX_Products_Tenant_Active_CreatedAt`) ซึ่ง Prisma schema ยังไม่รองรับบน SQL Server — สร้างด้วย raw SQL แยกไว้แล้วในฐาน dev แต่ **ถ้า reset/push schema ใหม่ในเครื่องอื่นต้องรัน SQL 2 statement นี้เพิ่มเอง** (ดูคอมเมนต์ในโมเดล `MemberTier`/`Product` ใน schema.prisma)
+- ใช้ `npx prisma db push` สำหรับ dev sync (ยังไม่ตั้ง migration history อย่างเป็นทางการด้วย `prisma migrate dev` — ค่อยเริ่มเมื่อ schema เริ่มนิ่งแล้ว)
+
 - Image: เก็บ path รูปใน object storage (S3-compatible) — ตอน dev ใช้ placeholder ก่อน
 - State/filter: URL query params เป็นหลัก (เช่น `/products?province=phitsanulok&monk=luang-pho-koon`) เพื่อให้แชร์ลิงก์กรองได้และ SEO friendly
 
