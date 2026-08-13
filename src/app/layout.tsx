@@ -6,6 +6,7 @@ import { getCurrentTenant } from "@/lib/tenant";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { CartProvider } from "@/lib/cart/CartContext";
 import { CartCount } from "@/components/cart/CartCount";
+import { AccountLink } from "@/components/auth/AccountLink";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/track-order" className="text-sm underline">
                   ติดตามออร์เดอร์
                 </Link>
+                <AccountLink />
                 <CartCount />
               </div>
             </div>
