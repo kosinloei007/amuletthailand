@@ -41,3 +41,4 @@ Roadmap ข้อ 8 — เลือก implement เป็น **"หลาย�
 - **ไม่มี public vendor registration/approval flow** — เฉพาะ tenant_admin สร้างบัญชี vendor ให้เท่านั้น
 - **ไม่มี split-shipping ต่อ vendor** — order เดียว จัดส่งเป็นก้อนเดียว ไม่รองรับ vendor ที่ต้องส่งของแยกกล่องเอง
 - **vendor เปลี่ยนรหัสผ่านเอง/ลืมรหัสผ่านยังไม่มี** — ต้องให้ tenant_admin แก้ไขให้ผ่าน DB โดยตรงไปก่อน (เหมือนข้อจำกัดเดียวกับ member ที่ยังไม่มีหน้า "ลืมรหัสผ่าน" เช่นกัน)
+- **vendor แก้ theme ร้านหรือเลขบัญชีธนาคารรับเงินของตัวเองไม่ได้** — พอร์ทัล `/vendor/*` ไม่มีหน้า settings ต้องให้ `tenant_admin` แก้ให้เท่านั้น: theme แก้ที่ `/admin/settings` (เป็นระดับ tenant ทั้งร้าน ไม่ใช่ระดับ vendor), เลขบัญชี/ชื่อบัญชี/ธนาคารแก้ที่ `/admin/vendors/[id]/edit`
