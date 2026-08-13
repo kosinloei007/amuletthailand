@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { logoutAction } from "@/lib/auth/actions";
 
 type UserRole = "super_admin" | "tenant_admin" | "member" | "vendor";
 
@@ -46,8 +47,15 @@ export function AccountLink() {
   }
 
   return (
-    <Link href={accountHrefFor(session.role)} className="text-sm underline">
-      บัญชีของฉัน
-    </Link>
+    <div className="flex items-center gap-3">
+      <Link href={accountHrefFor(session.role)} className="text-sm underline">
+        สวัสดี, {session.fullName}
+      </Link>
+      <form action={logoutAction}>
+        <button type="submit" className="text-sm underline">
+          ออกจากระบบ
+        </button>
+      </form>
+    </div>
   );
 }

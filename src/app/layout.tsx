@@ -72,8 +72,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <Link href="/track-order" className="text-sm underline">
                   ติดตามออร์เดอร์
                 </Link>
-                <AccountLink />
                 <CartCount />
+                <AccountLink />
               </div>
             </div>
           </header>
