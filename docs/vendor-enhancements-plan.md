@@ -17,12 +17,12 @@
 
 ## 1. รหัสสินค้า (SKU)
 
-- **Requirement:** ยืนยันรูปแบบ SKU (auto-generate หรือ vendor/admin กรอกเอง), unique ต่อ tenant หรือ global
-- **ER diagram / schema:** เพิ่ม `Products.Sku` (nullable ตอนเริ่ม เพราะสินค้าเก่ายังไม่มีค่า, unique index ต่อ tenant)
-- **Migration:** แก้ `prisma/schema.prisma` → `npx prisma db push`
-- **Backend:** เพิ่ม field ในฟอร์ม `src/lib/vendor-products/actions.ts` (validate unique), เพิ่มใน seed script เดิมถ้าต้องการให้สินค้าเก่ามีค่า
-- **UI:** ช่องกรอก SKU ในฟอร์มสินค้า (`/vendor/products/new`, `/vendor/products/[id]/edit`) + แสดงในตะกร้า/รายละเอียดออร์เดอร์/หน้าสรุปส่งให้ vendor (ข้อ 4)
-- **Testing:** สร้างสินค้าใหม่มี SKU → เช็คว่าโชว์ครบทุกจุดที่เกี่ยวกับคำสั่งซื้อ
+- **Requirement (ยืนยันแล้ว 2026-08-14, แก้ไขจากรอบก่อน):** **vendor กรอกเอง** ไม่ auto-generate, **บังคับกรอก (required)** — **unique ต่อ tenant** (ร้านเดียวกันห้ามซ้ำ ข้ามร้านซ้ำได้) — ต้อง validate ตอนบันทึกทั้งสองเงื่อนไข (ห้ามว่าง + ห้ามซ้ำในร้านเดียวกัน) ก่อน insert/update, มี unique index กันซ้ำระดับ DB ด้วยเป็น safety net
+- **ER diagram / schema:** เพิ่ม `Products.Sku` — คอลัมน์เป็น nullable ระดับ DB (เพราะสินค้าเก่าที่ seed ไว้ยังไม่มีค่า ต้อง backward-compatible กับ data เดิม) แต่ฟอร์ม/action บังคับกรอกเสมอสำหรับสินค้าที่สร้าง/แก้ไขใหม่ทุกครั้ง (รวมถึงบังคับให้กรอกตอนแก้ไขสินค้าเก่าที่ยังไม่มี SKU ด้วย) — unique index ร่วมกับ `TenantId`
+- **Migration:** แก้ `prisma/schema.prisma` → `npx prisma db push` (สินค้าเก่าที่มีอยู่แล้วปล่อย SKU เป็น null ไปก่อนได้ ไม่ทำ backfill — จะถูกบังคับกรอกเองตอน vendor เข้ามาแก้ไขสินค้านั้นครั้งถัดไป)
+- **Backend:** เพิ่ม field `sku` (required) ในฟอร์ม `src/lib/vendor-products/actions.ts` — validate ห้ามว่างและ unique ต่อ `vendorId`'s tenant ก่อน insert/update, คืน error ที่ชัดเจนถ้าซ้ำ (เช่น "รหัสสินค้านี้มีอยู่แล้วในร้าน") หรือว่าง ("กรุณากรอกรหัสสินค้า")
+- **UI:** ช่องกรอก SKU เป็น **required field** (มี `*` /validation แบบเดียวกับช่องอื่นที่บังคับกรอกในฟอร์มเดิม) ในฟอร์มสินค้า (`/vendor/products/new`, `/vendor/products/[id]/edit`) พร้อมข้อความ error ตอนกรอกซ้ำ/เว้นว่าง + แสดงในตะกร้า/รายละเอียดออร์เดอร์/หน้าสรุปส่งให้ vendor (ข้อ 4)
+- **Testing:** สร้างสินค้าใหม่กรอก SKU → ลองกรอกซ้ำเช็ค error → เช็คว่า SKU โชว์ครบทุกจุดที่เกี่ยวกับคำสั่งซื้อ
 - **Docs:** อัปเดต [database.md](./database.md) (DDL), [marketplace-vendors.md](./marketplace-vendors.md)
 
 ## 2. vendor เปลี่ยนรหัสผ่านเอง
@@ -37,7 +37,7 @@
 
 ## 3. แจ้งเตือน vendor เมื่อมีออร์เดอร์ใหม่
 
-- **Requirement:** ยืนยันว่า config ช่องทาง (Telegram/Email) ตั้งได้ต่อ vendor โดย tenant_admin เท่านั้น (เพราะ vendor ยังไม่มีหน้า settings เต็มรูปในเฟสนี้ — ยกเว้นทำข้อ 2 ไปพร้อมกันแล้วเปิดให้ vendor ตั้งเองได้)
+- **Requirement (ยืนยันแล้ว 2026-08-14):** config ช่องทาง (Telegram chat id) ให้ **tenant_admin กรอกให้ vendor ก่อน** ผ่าน `/admin/vendors/[id]/edit` — ไม่รอข้อ 2 (vendor self-service settings), อีเมลใช้ `Users.Email` เดิมของ user ที่ผูก vendor นั้นอยู่แล้วไม่ต้องกรอกเพิ่ม
 - **ER diagram / schema:** เพิ่ม `Vendors.TelegramChatId` (nullable), ใช้ `Users.Email` เดิมของ user ที่ผูก vendor นั้นสำหรับอีเมล (ไม่ต้องเพิ่ม field ใหม่), เพิ่ม `Vendors.NotifyTelegramEnabled`/`NotifyEmailEnabled` (bool)
 - **Migration:** `npx prisma db push`
 - **Backend:** ฟังก์ชันใหม่ `notifyVendorNewOrder()` (คู่กับ `notifyNewOrder()` เดิมใน `src/lib/notifications/notifyOrder.ts`) — เรียกแบบ fire-and-forget เหมือนเดิม ไม่ block response ลูกค้า ส่งเฉพาะเนื้อหาสั้นๆ ("มีออร์เดอร์ใหม่ เข้าไปดูที่ /vendor/orders")
@@ -47,12 +47,15 @@
 
 ## 4. หน้าแอดมินสรุป/ส่งรายการสั่งซื้อให้ vendor
 
-- **Requirement:** ยืนยัน scope ของ "แยกกลุ่มตามที่อยู่ลูกค้า" — 1 order อาจมีหลายที่อยู่ไหม (ปัจจุบัน checkout มีที่อยู่เดียวต่อ order) หรือหมายถึงแยกตามลูกค้าคนละ order
+- **Requirement (ยืนยันแล้ว 2026-08-14):** "แยกกลุ่มตามที่อยู่ลูกค้า" = แยกตาม **order** (1 order = 1 ที่อยู่จัดส่งอยู่แล้วตาม checkout เดิม ไม่มี multi-address ต่อ order) ไม่ใช่การรวมหลาย order ของลูกค้าคนเดียวกันเข้าด้วยกัน สเปกเต็มจากตัวอย่างที่ผู้ใช้ให้ (order เดียวมี 5 รายการ มาจาก 3 vendor):
+  - **ฝั่งแอดมิน:** ต่อ 1 order แสดง "ที่อยู่ลูกค้า XXX มี 5 รายการ" แล้ว breakdown แยกต่อ vendor (เช่น vendor A 2 รายการ, vendor B 2 รายการ, vendor C 1 รายการ) — มีปุ่ม **Send Notify แยกต่อ vendor แต่ละราย** ในหน้าเดียวกัน (กดของ vendor A ก็แจ้งเฉพาะ vendor A ไม่กระทบ vendor อื่น)
+  - **ฝั่ง vendor:** หลังกด Send Notify แล้ว vendor login เข้ามาต้องเห็นหน้า **"รอการจัดส่ง"** สรุปเฉพาะของตัวเอง ต่อ order/ที่อยู่ — เช่น vendor A เห็น "ที่อยู่ลูกค้า XXX ต้องส่งสินค้า 2 รายการ", vendor C เห็น "ที่อยู่ลูกค้า XXX ต้องส่งสินค้า 1 รายการ" (ไม่เห็นเลขรวม 5 รายการหรือของ vendor อื่นเลย)
+  - หน้า `/vendor/orders` เดิมที่มีอยู่แล้ว (group `OrderItem` ตาม `orderId`, กรองเฉพาะของ vendor ตัวเอง) ใกล้เคียงกับที่ต้องการอยู่แล้ว — สิ่งที่ต้องเพิ่มคือ **เช็คว่าหน้านี้โชว์ที่อยู่จัดส่งของ order ด้วยหรือยัง** ถ้ายังไม่มีต้องเพิ่ม และอาจต้อง reframe เป็นมุมมอง "รอการจัดส่ง" (badge ใหม่/ยังไม่ส่ง vs ส่งแล้ว — ผูกกับ field tracking ในข้อ 5 ถ้าทำคู่กัน)
 - **ER diagram / schema:** ไม่ต้องเพิ่มตารางใหม่ ใช้ข้อมูลจาก `Order` + `OrderItem` + `Vendor` ที่มีอยู่แล้ว (join ผ่าน `OrderItems.VendorId`)
 - **Migration:** ไม่มี (ยกเว้นทำร่วมกับข้อ 3 ที่ต้องเพิ่ม field ใน `Vendor`)
-- **Backend:** query ใหม่ group `OrderItem` ตาม `vendorId` แล้วตาม `orderId`/ที่อยู่จัดส่ง — action ปุ่ม "Send Notify" เรียก `notifyVendorNewOrder()` จากข้อ 3 ซ้ำ (resend)
-- **UI:** หน้าใหม่ `/admin/vendors/[id]/orders` หรือ tab ในหน้า vendor detail — ตาราง SKU/ชื่อสินค้า/จำนวน/ยอดรวม/ที่อยู่ลูกค้า + ปุ่ม Send Notify (checkbox เลือกช่องทาง)
-- **Testing:** สร้าง order ผสมหลาย vendor → เช็คว่าหน้านี้แยกกลุ่มถูกต้อง ไม่รั่วข้อมูล vendor อื่น
+- **Backend:** query ฝั่งแอดมินใหม่ — ต่อ order, group `OrderItem` ตาม `vendorId` นับจำนวนรายการต่อ vendor — action ปุ่ม Send Notify ต่อ vendor เรียก `notifyVendorNewOrder()` จากข้อ 3 (ระบุ orderId ให้ vendor รู้ว่า order ไหน)
+- **UI:** เพิ่มใน `/admin/orders/[id]` (order เดียวอยู่แล้วในระบบ) ส่วน breakdown ต่อ vendor + ปุ่ม Send Notify ต่อแถว (ไม่ต้องทำหน้าแยกใหม่ เพราะ scope คือ "ต่อ order" ไม่ใช่ "รวมทุก order ของ vendor" — อันหลังคือหน้า `/vendor/orders` ที่ vendor เห็นเองอยู่แล้ว), ปรับ `/vendor/orders` ให้โชว์ที่อยู่จัดส่งชัดเจนต่อ order ถ้ายังไม่มี
+- **Testing:** สร้าง order ผสมหลาย vendor → กด Send Notify ของ vendor A → เช็คว่า vendor B/C ไม่ได้รับแจ้งเตือน และ vendor A login เข้ามาเห็นแค่จำนวนรายการของตัวเอง ไม่เห็นยอดรวม/ของ vendor อื่น
 - **Docs:** อัปเดต [marketplace-vendors.md](./marketplace-vendors.md)
 
 ## 5. เลขพัสดุ/tracking number ต่อ vendor
