@@ -60,12 +60,12 @@
 
 ## 5. เลขพัสดุ/tracking number ต่อ vendor
 
-- **Requirement:** ยืนยัน list ขนส่งที่ต้องมีใน dropdown (ไปรษณีย์ไทย, Kerry, Flash, J&T, Ninja Van, DHL ตามที่ระบุไว้ + free-text สำรอง) และ URL template ต่อขนส่งสำหรับ auto-generate ลิงก์ tracking
+- **Requirement (ยืนยันแล้ว 2026-08-14):** list ขนส่งในฟอร์มยังใช้ตามที่ระบุไว้เดิม (ไปรษณีย์ไทย, Kerry, Flash, J&T, Ninja Van, DHL + free-text สำรอง) แต่ **ไม่ auto-generate ลิงก์แยกต่อขนส่งเอง** — ตรวจสอบ URL ทางการของแต่ละขนส่งแล้วมั่นใจแค่ DHL (`https://www.dhl.com/en/express/tracking.html?AWB={trackingNumber}&brand=DHL`) ที่เหลือหา URL parameter ที่ยืนยันได้จากแหล่งทางการไม่เจอ (เว็บขนส่งไทยเปลี่ยน URL บ่อย) จึง**ใช้ tracking aggregator กลาง 17TRACK แทนสำหรับทุกขนส่ง** เพื่อไม่ต้องดูแล URL template แยกรายขนส่งที่เสี่ยงพังเวลาขนส่งเปลี่ยนเว็บ — ลิงก์รูปแบบเดียว `https://t.17track.net/en#nums={trackingNumber}` (17TRACK auto-detect ขนส่งจากเลขพัสดุเอง ไม่ต้องส่ง carrier code เพิ่ม) — carrier ที่เลือกในฟอร์มใช้แค่แสดงผล/บันทึกอ้างอิงเท่านั้น ไม่ได้ใช้คำนวณ URL
 - **ER diagram / schema:** ตารางใหม่ `Shipment` — `Id, OrderId (FK Orders), VendorId (FK Vendors, nullable สำหรับสินค้าร้านเอง), CarrierName, TrackingNumber, ShippedAt, CreatedAt` (1 order อาจมีหลาย shipment ถ้าแต่ละ vendor แพ็คแยกกัน)
 - **Migration:** เพิ่ม model `Shipment` ใน `prisma/schema.prisma` → `npx prisma db push`
-- **Backend:** action ใหม่ให้ vendor (หรือ tenant_admin) กรอก carrier + tracking number ต่อ order ของตัวเอง — auto-generate tracking URL จาก template ตอน query ไม่ต้องเก็บ URL ใน DB
-- **UI:** ฟอร์มกรอก tracking ใน `/vendor/orders` (per order-vendor group), แสดงลิงก์ tracking กดได้ใน `/track-order` (ฝั่งลูกค้า) และ `/admin/orders/[id]`
-- **Testing:** กรอก tracking number → เช็คว่าโชว์ลิงก์ถูก carrier ใน `/track-order` จริง
+- **Backend:** action ใหม่ให้ vendor (หรือ tenant_admin) กรอก carrier (dropdown + free-text สำรอง, เก็บไว้แสดงผลเท่านั้น) + tracking number ต่อ order ของตัวเอง — generate ลิงก์ 17TRACK จาก `trackingNumber` ตอน query ด้วย helper function เดียว (`buildTrackingUrl(trackingNumber)`) ไม่ต้องเก็บ URL ใน DB ไม่ต้องมี logic แยกตาม carrier
+- **UI:** ฟอร์มกรอก tracking ใน `/vendor/orders` (per order-vendor group), แสดงลิงก์ 17TRACK กดได้ใน `/track-order` (ฝั่งลูกค้า) และ `/admin/orders/[id]` — เปิดในแท็บใหม่ (`target="_blank"`) พร้อม label บอกว่าลิงก์ไปหน้า 17TRACK
+- **Testing:** กรอก tracking number → เช็คว่าลิงก์ 17TRACK เปิดได้จริงและโชว์ผลลัพธ์ตรงเลขพัสดุที่กรอกใน `/track-order`
 - **Docs:** อัปเดต [database.md](./database.md) (DDL ตาราง `Shipment`), [checkout-and-payment.md](./checkout-and-payment.md), [marketplace-vendors.md](./marketplace-vendors.md)
 - **หมายเหตุ:** ส่วน "แจ้งเตือนลูกค้าอัตโนมัติทันทีที่กรอกเลขพัสดุ" ตาม requirement เดิมให้เตรียม field/hook ไว้แต่ **ปิดใช้งานไว้ก่อน** (ไม่ต่อ SMS/email จริง) — ไม่ต้องต่อ API ขนส่งเพื่อดึงสถานะเรียลไทม์
 
