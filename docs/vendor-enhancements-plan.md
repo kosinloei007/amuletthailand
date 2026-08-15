@@ -71,21 +71,28 @@
 
 ## 6. ระบบ payout/commission
 
-- **Requirement:** ยืนยันตัวเลข: ระยะเวลา escrow กี่วันหลัง `shipped` (ตัวอย่างในเอกสาร 3-7 วัน), รอบจ่ายกี่วัน (ตัวอย่าง 7/15 วัน), ตั้งได้ต่อร้านหรือ fix ค่าเดียว, `commissionPercent` default เท่าไหร่ตอนสร้าง vendor ใหม่
+- **Requirement (ยืนยันแล้ว 2026-08-15):**
+  - ระยะเวลา escrow และรอบจ่าย **ตั้งได้ต่อร้าน (per tenant)** ไม่ fix ค่าเดียวทั้งระบบ — ค่า default ตอนสร้าง tenant ใหม่: **escrow 7 วัน**, **รอบจ่าย 15 วัน**
+  - `Vendor.CommissionPercent` default = **10%** ตอนสร้าง vendor ใหม่ (แก้ต่อ vendor ได้ทีหลังที่ `/admin/vendors/[id]/edit`)
+  - ค่าธรรมเนียม gateway: **ใส่เป็น field ไว้เฉยๆ ก่อน ค่า default = 0** — เพราะ payment gateway ปัจจุบันเป็น mock ไม่มีผู้ให้บริการจริงที่มี fee schedule ให้อ้างอิง ([checkout-and-payment.md](./checkout-and-payment.md) หัวข้อ "Payment gateway (จำลอง)") เตรียมช่องไว้เผื่ออนาคตต่อ gateway จริงแล้วค่อยกรอกค่าเข้ามาใช้งาน ไม่ต้องมี logic คำนวณ % เองตอนนี้
 - **ER diagram / schema:**
-  - เพิ่ม `Vendors.CommissionPercent` (decimal)
+  - เพิ่ม `Tenants.EscrowDays` (int, default 7), `Tenants.PayoutCycleDays` (int, default 15) — แก้ได้ที่ `/admin/settings`
+  - เพิ่ม `Vendors.CommissionPercent` (decimal, default 10)
   - เพิ่ม `OrderItems.PayoutStatus` (`pending | eligible | paid`) + `OrderItems.PayoutEligibleAt`
-  - ตารางใหม่ `VendorPayoutBatch` — `Id, VendorId, PeriodStart, PeriodEnd, GrossAmount, CommissionAmount, GatewayFeeAmount, NetAmount, Status (pending|paid), PaidAt`
+  - ตารางใหม่ `VendorPayoutBatch` — `Id, VendorId, PeriodStart, PeriodEnd, GrossAmount, CommissionAmount, GatewayFeeAmount (default 0), NetAmount, Status (pending|paid), PaidAt`
   - ความสัมพันธ์: `OrderItem` ผูกเข้า batch ผ่าน field `PayoutBatchId` (nullable จนกว่าจะถูกจัดเข้ารอบ)
-- **Migration:** เพิ่ม model ใหม่ + field ใหม่ → `npx prisma db push`
+- **Migration:** เพิ่ม model ใหม่ + field ใหม่ (พร้อม default ตามที่ระบุ) → `npx prisma db push`
 - **Backend:**
-  - job/คำสั่งคำนวณ `payoutEligibleAt` เมื่อ order เปลี่ยนเป็น `shipped` (eligible = shippedAt + escrow days)
-  - job/action รวมยอด `OrderItem` ที่ `payoutStatus = eligible` ของแต่ละ vendor เข้า `VendorPayoutBatch` ตามรอบ — คำนวณ commission และ gateway fee (เฉพาะ order ที่จ่ายผ่าน `PaymentTransaction`) หักออกจากยอดขายก่อนได้ `NetAmount`
+  - job/คำสั่งคำนวณ `payoutEligibleAt` เมื่อ order เปลี่ยนเป็น `shipped` (eligible = shippedAt + `tenant.escrowDays`)
+  - job/action รวมยอด `OrderItem` ที่ `payoutStatus = eligible` ของแต่ละ vendor เข้า `VendorPayoutBatch` ตามรอบ `tenant.payoutCycleDays` — คำนวณ `CommissionAmount` จาก `vendor.commissionPercent`, `GatewayFeeAmount` ใส่ 0 ไปก่อน (ไม่มี logic คำนวณจริง) หักออกจากยอดขายได้ `NetAmount`
   - action ให้ tenant_admin กดติ๊ก "จ่ายแล้ว" → อัปเดต `VendorPayoutBatch.Status = paid` + `OrderItems.PayoutStatus = paid`
-- **UI:** หน้า `/admin/vendors/[id]/payouts` แสดงยอดรอจ่าย/ประวัติจ่ายแล้ว, ปุ่ม "ทำเครื่องหมายว่าจ่ายแล้ว" (ไม่มีการโอนเงินอัตโนมัติจริง)
-- **Testing:** จำลอง order ผ่าน gateway + order โอนเงิน → เช็ค commission/gateway fee คำนวณถูกต้อง แยกกันตามประเภทการจ่าย, เช็คว่า order ที่ยังไม่พ้น escrow ไม่ถูกจัดเข้ารอบ
-- **Docs:** อัปเดต [database.md](./database.md) (DDL `VendorPayoutBatch` + field ใหม่), [marketplace-vendors.md](./marketplace-vendors.md)
-- **ขอบเขตที่ยังตัดออก (ตาม requirement เดิม):** ไม่ต่อ bank API/PromptPay transfer API จริง, ไม่มี instant payout
+  - เพิ่มช่องตั้งค่า `escrowDays`/`payoutCycleDays` ใน action settings เดิม (`src/lib/settings/actions.ts`)
+- **UI:**
+  - หน้า `/admin/vendors/[id]/payouts` แสดงยอดรอจ่าย/ประวัติจ่ายแล้ว, ปุ่ม "ทำเครื่องหมายว่าจ่ายแล้ว" (ไม่มีการโอนเงินอัตโนมัติจริง)
+  - เพิ่มช่องกรอก escrow/รอบจ่าย (วัน) ใน `/admin/settings`, เพิ่มช่องกรอก commission % ใน `/admin/vendors/[id]/edit`
+- **Testing:** สร้าง vendor ใหม่เช็คว่า commission default = 10%, ตั้งค่า escrow/รอบจ่ายต่อร้านแล้วเช็คว่า `payoutEligibleAt` คำนวณตามค่านั้นจริง, เช็คว่า order ที่ยังไม่พ้น escrow ไม่ถูกจัดเข้ารอบ, เช็คว่า `GatewayFeeAmount` เป็น 0 เสมอในตอนนี้
+- **Docs:** อัปเดต [database.md](./database.md) (DDL `VendorPayoutBatch` + field ใหม่ใน `Tenants`/`Vendors`/`OrderItems`), [marketplace-vendors.md](./marketplace-vendors.md)
+- **ขอบเขตที่ยังตัดออก (ตาม requirement เดิม):** ไม่ต่อ bank API/PromptPay transfer API จริง, ไม่มี instant payout, ไม่มี logic คำนวณค่าธรรมเนียม gateway จริง (รอต่อ gateway จริงในอนาคต)
 
 ## หลังทำเสร็จแต่ละข้อ
 
