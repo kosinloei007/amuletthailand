@@ -68,3 +68,32 @@ export async function notifyNewOrder(order: OrderForNotify): Promise<void> {
     console.error(`[notify] ส่งแจ้งเตือนออร์เดอร์ #${order.orderNumber} ล้มเหลว:`, e);
   }
 }
+
+// แจ้งเตือน vendor รายที่มีสินค้าอยู่ในออร์เดอร์นั้นๆ — คู่กับ notifyNewOrder() ด้านบนที่แจ้งแอดมินร้าน
+// bot token ใช้ร่วมจาก NotifyConfig ของ tenant เดิม ต่างแค่ chat id ปลายทางเป็นของ vendor แต่ละราย
+// ไม่ throw ออกไปเด็ดขาด เหมือนกับ notifyNewOrder()
+export async function notifyVendorNewOrder(tenantId: number, vendorId: number, orderNumber: string): Promise<void> {
+  try {
+    const [config, vendor] = await Promise.all([
+      prisma.notifyConfig.findUnique({ where: { tenantId } }),
+      prisma.vendor.findUnique({ where: { vendorId }, include: { users: { select: { email: true }, take: 1 } } }),
+    ]);
+    if (!vendor) return;
+
+    const message = `📦 มีออร์เดอร์ใหม่ #${orderNumber} เข้าไปดูรายการที่ต้องจัดส่งได้ที่ /vendor/orders`;
+
+    if (vendor.notifyTelegramEnabled && vendor.telegramChatId && config?.telegramBotToken) {
+      const result = await sendTelegramMessage(config.telegramBotToken, vendor.telegramChatId, message);
+      if (!result.ok) {
+        console.error(`[notify] Telegram แจ้งเตือน vendor #${vendorId} ล้มเหลวสำหรับออร์เดอร์ #${orderNumber}:`, result.error);
+      }
+    }
+
+    const vendorEmail = vendor.users[0]?.email;
+    if (vendor.notifyEmailEnabled && vendorEmail) {
+      await sendEmail(vendorEmail, `มีออร์เดอร์ใหม่ #${orderNumber}`, message);
+    }
+  } catch (e) {
+    console.error(`[notify] แจ้งเตือน vendor #${vendorId} สำหรับออร์เดอร์ #${orderNumber} ล้มเหลว:`, e);
+  }
+}

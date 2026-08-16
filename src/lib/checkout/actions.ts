@@ -9,7 +9,7 @@ import { pickBestPromotion, calculatePricing } from "@/lib/checkout/pricing";
 import { uploadSlipFile } from "@/lib/checkout/uploadSlip";
 import { generateOrderNumber } from "@/lib/checkout/orderNumber";
 import { createMockGatewayCharge } from "@/lib/checkout/mockGateway";
-import { notifyNewOrder } from "@/lib/notifications/notifyOrder";
+import { notifyNewOrder, notifyVendorNewOrder } from "@/lib/notifications/notifyOrder";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -175,6 +175,11 @@ export async function createOrderAction(_prevState: ActionState, formData: FormD
 
   // แจ้งเตือนแบบไม่ block การตอบกลับลูกค้า (ตาม docs/checkout-and-payment.md)
   void notifyNewOrder(order);
+
+  const vendorIds = [...new Set(orderItemsData.map((i) => i.vendorId).filter((id): id is number => id !== null))];
+  for (const vendorId of vendorIds) {
+    void notifyVendorNewOrder(tenant.tenantId, vendorId, order.orderNumber);
+  }
 
   redirect(`/order-confirmation/${order.orderNumber}`);
 }

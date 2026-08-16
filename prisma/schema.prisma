@@ -46,6 +46,11 @@ model Vendor {
   accountName   String?  @map("AccountName") @db.NVarChar(200)
   accountNumber String?  @map("AccountNumber") @db.NVarChar(50)
   status        String   @default("active") @map("Status") @db.NVarChar(20) // active | suspended
+  // ช่องทางแจ้งเตือนออร์เดอร์ใหม่ต่อ vendor — tenant_admin กรอกให้ที่ /admin/vendors/[id]/edit
+  // (bot token ใช้ร่วมจาก NotifyConfig ของ tenant เดิม ต่างแค่ chat id ปลายทาง), อีเมลใช้ Users.Email เดิมของ user ที่ผูก vendor นี้
+  telegramChatId        String?  @map("TelegramChatId") @db.NVarChar(100)
+  notifyTelegramEnabled Boolean  @default(false) @map("NotifyTelegramEnabled")
+  notifyEmailEnabled    Boolean  @default(false) @map("NotifyEmailEnabled")
   createdAt     DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
   updatedAt     DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
 

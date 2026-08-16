@@ -23,9 +23,15 @@ function readShopFields(formData: FormData) {
   const bankName = String(formData.get("bankName") ?? "").trim();
   const accountName = String(formData.get("accountName") ?? "").trim();
   const accountNumber = String(formData.get("accountNumber") ?? "").trim();
+  const telegramChatId = String(formData.get("telegramChatId") ?? "").trim();
+  const notifyTelegramEnabled = formData.get("notifyTelegramEnabled") === "on";
+  const notifyEmailEnabled = formData.get("notifyEmailEnabled") === "on";
 
   if (!shopName || !contactName) {
     return { error: "กรุณากรอกชื่อร้านและชื่อผู้ติดต่อ" } as const;
+  }
+  if (notifyTelegramEnabled && !telegramChatId) {
+    return { error: "กรุณากรอก Telegram chat id ก่อนเปิดใช้งานแจ้งเตือนผ่าน Telegram" } as const;
   }
 
   return {
@@ -36,6 +42,9 @@ function readShopFields(formData: FormData) {
       bankName: bankName || null,
       accountName: accountName || null,
       accountNumber: accountNumber || null,
+      telegramChatId: telegramChatId || null,
+      notifyTelegramEnabled,
+      notifyEmailEnabled,
     },
   } as const;
 }
