@@ -7,12 +7,14 @@ import { useCart } from "@/lib/cart/CartContext";
 export function AddToCartButton({
   productId,
   name,
+  sku,
   price,
   imageUrl,
   stock,
 }: {
   productId: number;
   name: string;
+  sku: string | null;
   price: number;
   imageUrl: string | null;
   stock: number;
@@ -34,7 +36,7 @@ export function AddToCartButton({
       <button
         type="button"
         onClick={() => {
-          addItem({ productId, name, price, imageUrl, stock });
+          addItem({ productId, name, sku, price, imageUrl, stock });
           setAdded(true);
           setTimeout(() => setAdded(false), 1500);
         }}
@@ -45,7 +47,7 @@ export function AddToCartButton({
       <button
         type="button"
         onClick={() => {
-          addItem({ productId, name, price, imageUrl, stock });
+          addItem({ productId, name, sku, price, imageUrl, stock });
           router.push("/cart");
         }}
         className="w-fit rounded-md border border-black/20 px-6 py-3 text-sm"

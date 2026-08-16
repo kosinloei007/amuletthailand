@@ -37,6 +37,7 @@ export default function CartPage() {
               <Link href={`/products/${item.productId}`} className="text-sm font-medium underline">
                 {item.name}
               </Link>
+              {item.sku && <p className="text-xs text-black/50">รหัสสินค้า: {item.sku}</p>}
               <p className="text-sm text-black/60">{item.price.toLocaleString("th-TH")} บาท</p>
               <div className="flex items-center gap-2">
                 <select

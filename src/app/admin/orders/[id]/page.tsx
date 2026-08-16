@@ -28,7 +28,13 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
   const order = await prisma.order.findFirst({
     where: { orderId, tenantId: session.tenantId },
-    include: { items: true, user: true, appliedMemberTier: true, appliedStorePromotion: true, paymentTransactions: true },
+    include: {
+      items: { include: { product: { select: { sku: true } } } },
+      user: true,
+      appliedMemberTier: true,
+      appliedStorePromotion: true,
+      paymentTransactions: true,
+    },
   });
   if (!order) {
     notFound();
@@ -66,7 +72,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         {order.items.map((item) => (
           <div key={item.orderItemId} className="flex justify-between">
             <span>
-              {item.productName} x{item.quantity}
+              {item.productName}
+              {item.product.sku && <span className="text-black/50"> ({item.product.sku})</span>} x{item.quantity}
             </span>
             <span>{(Number(item.unitPrice) * item.quantity).toLocaleString("th-TH")} บาท</span>
           </div>

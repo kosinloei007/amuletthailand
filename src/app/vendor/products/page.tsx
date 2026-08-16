@@ -43,6 +43,7 @@ export default async function VendorProductsPage() {
                 )}
               </p>
               <p className="text-sm text-black/70">
+                {product.sku ? `รหัส ${product.sku} · ` : ""}
                 {Number(product.price).toLocaleString("th-TH")} บาท · สต็อก {product.stock} ชิ้น
               </p>
             </div>

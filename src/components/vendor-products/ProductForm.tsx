@@ -8,6 +8,7 @@ type Option = { id: number; label: string };
 type ProductFormValues = {
   productId?: number;
   name?: string;
+  sku?: string | null;
   description?: string | null;
   price?: number | string;
   costPrice?: number | string | null;
@@ -55,6 +56,21 @@ export function ProductForm({
           defaultValue={defaultValues?.name}
           className="rounded-md border border-black/10 px-3 py-2"
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="sku" className="text-sm font-medium">
+          รหัสสินค้า (SKU)
+        </label>
+        <input
+          id="sku"
+          name="sku"
+          type="text"
+          required
+          defaultValue={defaultValues?.sku ?? ""}
+          className="rounded-md border border-black/10 px-3 py-2"
+        />
+        <p className="text-xs text-black/50">ตั้งเองได้ตามต้องการ ต้องไม่ซ้ำกับสินค้าอื่นในร้านของคุณ</p>
       </div>
 
       <div className="flex flex-col gap-1">

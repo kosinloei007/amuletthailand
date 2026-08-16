@@ -36,7 +36,7 @@
     - ใช้ Prisma **v7** ซึ่งบังคับต้องส่ง **driver adapter** เข้า `PrismaClient` เสมอ (ต่างจาก v5/v6 ที่ต่อ DB ตรงจาก `datasource.url` ได้เลย) — สำหรับ SQL Server ใช้ `@prisma/adapter-mssql` ห้ามลืม instantiate ด้วย adapter มิฉะนั้นจะได้ error `PrismaClientInitializationError`
     - ใช้ Prisma client ผ่าน singleton ที่ `src/lib/prisma.ts` (`import { prisma } from "@/lib/prisma"`) ไม่ต้อง `new PrismaClient()` เองในแต่ละไฟล์
     - Generated client อยู่ที่ `src/generated/prisma` (gitignored, รัน `npx prisma generate` ใหม่ได้เสมอ)
-    - Index บางตัวที่ DDL ต้องการเป็น filtered/partial index (`UX_MemberTiers_Tenant_Default`, `IX_Products_Tenant_Active_CreatedAt`) ซึ่ง Prisma schema ยังไม่รองรับบน SQL Server — สร้างด้วย raw SQL แยกไว้แล้วในฐาน dev แต่ **ถ้า reset/push schema ใหม่ในเครื่องอื่นต้องรัน SQL 2 statement นี้เพิ่มเอง** (ดูคอมเมนต์ในโมเดล `MemberTier`/`Product` ใน schema.prisma)
+    - Index บางตัวที่ DDL ต้องการเป็น filtered/partial index (`UX_MemberTiers_Tenant_Default`, `IX_Products_Tenant_Active_CreatedAt`, `UX_Products_Tenant_Sku`) ซึ่ง Prisma schema ยังไม่รองรับบน SQL Server — สร้างด้วย raw SQL แยกไว้แล้วในฐาน dev แต่ **ถ้า reset/push schema ใหม่ในเครื่องอื่นต้องรัน SQL 3 statement นี้เพิ่มเอง** (ดูคอมเมนต์ในโมเดล `MemberTier`/`Product` ใน schema.prisma)
     - ใช้ `npx prisma db push` สำหรับ dev sync (ยังไม่ตั้ง migration history อย่างเป็นทางการด้วย `prisma migrate dev` — ค่อยเริ่มเมื่อ schema เริ่มนิ่งแล้ว)
 
     **Auth/สิทธิ์ผู้ใช้ที่ทำไว้แล้ว** (ดู [docs/auth-and-membership.md](./docs/auth-and-membership.md) ก่อนแก้ไขส่วนนี้เสมอ):

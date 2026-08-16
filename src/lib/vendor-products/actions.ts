@@ -9,6 +9,7 @@ export type ActionState = { error?: string } | undefined;
 
 function readProductForm(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
+  const sku = String(formData.get("sku") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const priceRaw = String(formData.get("price") ?? "").trim();
   const costPriceRaw = String(formData.get("costPrice") ?? "").trim();
@@ -29,6 +30,9 @@ function readProductForm(formData: FormData) {
   if (!name) {
     return { error: "กรุณากรอกชื่อสินค้า" } as const;
   }
+  if (!sku) {
+    return { error: "กรุณากรอกรหัสสินค้า" } as const;
+  }
   if (!Number.isFinite(price) || price <= 0) {
     return { error: "กรุณากรอกราคาขายให้ถูกต้อง" } as const;
   }
@@ -42,6 +46,7 @@ function readProductForm(formData: FormData) {
   return {
     data: {
       name,
+      sku,
       description: description || null,
       price,
       costPrice: costPrice ?? null,
@@ -62,6 +67,13 @@ export async function createVendorProductAction(_prevState: ActionState, formDat
   const session = await requireVendor();
   const parsed = readProductForm(formData);
   if ("error" in parsed) return { error: parsed.error };
+
+  const duplicate = await prisma.product.findFirst({
+    where: { tenantId: session.tenantId!, sku: parsed.data.sku },
+  });
+  if (duplicate) {
+    return { error: "รหัสสินค้านี้มีอยู่แล้วในร้าน" };
+  }
 
   await prisma.product.create({
     data: {
@@ -87,6 +99,13 @@ export async function updateVendorProductAction(_prevState: ActionState, formDat
   const existing = await prisma.product.findFirst({ where: { productId, vendorId: session.vendorId } });
   if (!existing) {
     return { error: "ไม่พบสินค้านี้" };
+  }
+
+  const duplicate = await prisma.product.findFirst({
+    where: { tenantId: session.tenantId!, sku: parsed.data.sku, productId: { not: productId } },
+  });
+  if (duplicate) {
+    return { error: "รหัสสินค้านี้มีอยู่แล้วในร้าน" };
   }
 
   await prisma.$transaction(async (tx) => {

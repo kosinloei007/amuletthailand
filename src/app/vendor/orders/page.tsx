@@ -14,7 +14,7 @@ export default async function VendorOrdersPage() {
 
   const items = await prisma.orderItem.findMany({
     where: { vendorId: session.vendorId },
-    include: { order: true },
+    include: { order: true, product: { select: { sku: true } } },
     orderBy: { order: { createdAt: "desc" } },
   });
 
@@ -63,7 +63,8 @@ export default async function VendorOrdersPage() {
                 {groupItems.map((item) => (
                   <div key={item.orderItemId} className="flex justify-between">
                     <span>
-                      {item.productName} x{item.quantity}
+                      {item.productName}
+                      {item.product.sku && <span className="text-black/50"> ({item.product.sku})</span>} x{item.quantity}
                     </span>
                     <span>{(Number(item.unitPrice) * item.quantity).toLocaleString("th-TH")} บาท</span>
                   </div>

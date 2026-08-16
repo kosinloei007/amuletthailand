@@ -213,11 +213,15 @@ model UserAddress {
 // ===== Products (พระเครื่อง) =====
 // หมายเหตุ: DDL มี filtered index (TenantId, CreatedAt DESC) WHERE IsActive = 1
 // เพิ่มด้วย raw SQL หลัง migrate เพราะ Prisma ไม่รองรับ filtered index บน SQL Server
+// หมายเหตุ: ต้องมี unique filtered index (TenantId, Sku) WHERE Sku IS NOT NULL เพิ่มด้วย raw SQL
+// หลัง migrate เพราะ Prisma ไม่รองรับ filtered/partial unique index บน SQL Server — Sku เป็น nullable
+// ระดับ DB (สินค้าเก่าที่ seed ไว้ยังไม่มีค่า) แต่ vendor form บังคับกรอกเสมอสำหรับสินค้าที่สร้าง/แก้ไขใหม่
 model Product {
   productId       Int      @id @default(autoincrement()) @map("ProductId")
   tenantId        Int      @map("TenantId")
   vendorId        Int?     @map("VendorId") // NULL = สินค้าของร้าน (house product), ไม่ NULL = สินค้าของผู้ขายรายนั้น
   name            String   @map("Name") @db.NVarChar(300)
+  sku             String?  @map("Sku") @db.NVarChar(100) // รหัสสินค้า — vendor กรอกเอง, unique ต่อ tenant (ดูหมายเหตุด้านบน)
   description     String?  @map("Description") @db.NVarChar(Max)
   costPrice       Decimal? @map("CostPrice") @db.Decimal(10, 2)
   price           Decimal  @map("Price") @db.Decimal(10, 2)

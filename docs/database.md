@@ -291,6 +291,7 @@ CREATE TABLE Products (
     ProductId       INT IDENTITY(1,1) PRIMARY KEY,
     TenantId        INT             NOT NULL,
     Name            NVARCHAR(300)   NOT NULL,
+    Sku             NVARCHAR(100)   NULL,   -- รหัสสินค้า, vendor กรอกเอง, unique ต่อ TenantId (ดู index ด้านล่าง) — NULL ได้เฉพาะสินค้าเก่าที่ยังไม่ถูกแก้ไขหลังเพิ่มฟีเจอร์นี้
     Description     NVARCHAR(MAX)   NULL,
     CostPrice       DECIMAL(10,2)   NULL,   -- ราคาต้นทุน ใช้คำนวณราคาขาย default (ไม่บังคับกรอก)
     Price           DECIMAL(10,2)   NOT NULL, -- ราคาขาย: default = CostPrice * (1 + Tenant.DefaultMarkupPercent/100) แก้ไขเองได้เสมอ
@@ -316,6 +317,8 @@ CREATE INDEX IX_Products_Tenant_CreatedAt ON Products(TenantId, CreatedAt DESC) 
 CREATE INDEX IX_Products_Province ON Products(ProvinceId);
 CREATE INDEX IX_Products_Monk ON Products(MonkId);
 CREATE INDEX IX_Products_Category ON Products(CategoryId);
+-- SKU ไม่ซ้ำกันภายในร้านเดียวกัน (ข้ามร้านซ้ำได้) — filtered เพราะ Sku เป็น NULL ได้สำหรับสินค้าเก่า
+CREATE UNIQUE INDEX UX_Products_Tenant_Sku ON Products(TenantId, Sku) WHERE Sku IS NOT NULL;
 
 -- ===== ProductImages (รูปสินค้าหลายรูป — รวมรูปพระและรูปใบรับประกัน) =====
 CREATE TABLE ProductImages (
