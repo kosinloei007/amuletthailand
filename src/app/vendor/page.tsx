@@ -50,6 +50,9 @@ export default async function VendorDashboardPage() {
         <Link href="/vendor/orders" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
           ออร์เดอร์ของฉัน
         </Link>
+        <Link href="/vendor/settings" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+          ตั้งค่าบัญชี
+        </Link>
       </div>
     </main>
   );

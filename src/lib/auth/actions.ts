@@ -120,3 +120,31 @@ export async function requireVendor() {
   }
   return session as typeof session & { vendorId: number };
 }
+
+export async function changeVendorPasswordAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await requireVendor();
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!currentPassword || !newPassword) {
+    return { error: "กรุณากรอกรหัสผ่านเดิมและรหัสผ่านใหม่" };
+  }
+  if (newPassword.length < 8) {
+    return { error: "รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร" };
+  }
+  if (newPassword !== confirmPassword) {
+    return { error: "รหัสผ่านใหม่และยืนยันรหัสผ่านไม่ตรงกัน" };
+  }
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { userId: session.userId } });
+  const currentPasswordMatches = await verifyPassword(currentPassword, user.passwordHash);
+  if (!currentPasswordMatches) {
+    return { error: "รหัสผ่านเดิมไม่ถูกต้อง" };
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await prisma.user.update({ where: { userId: session.userId }, data: { passwordHash } });
+
+  redirect("/vendor/settings?success=1");
+}
