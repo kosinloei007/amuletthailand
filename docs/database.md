@@ -160,6 +160,8 @@ CREATE TABLE Tenants (
     OwnerContact        NVARCHAR(200)   NULL,
     ThemeId             INT             NULL,
     DefaultMarkupPercent DECIMAL(5,2)   NOT NULL DEFAULT 30.00, -- % บวกราคาขาย default จากต้นทุน แก้ไขได้
+    EscrowDays          INT             NOT NULL DEFAULT 7,  -- จำนวนวันหลัง order เป็น shipped ก่อนยอดของ vendor พร้อมจัดเข้ารอบจ่าย (เพิ่มตอนทำ roadmap ข้อ 9.6)
+    PayoutCycleDays     INT             NOT NULL DEFAULT 15, -- ข้อมูลอ้างอิงรอบจ่าย (ไม่มี cron อัตโนมัติ แอดมินกดสร้างรอบเอง)
     CreatedAt           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAt           DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME()
 );
@@ -403,6 +405,10 @@ CREATE TABLE OrderItems (
     ProductName     NVARCHAR(300)   NOT NULL,   -- เก็บชื่อ ณ เวลาซื้อ กันสินค้าถูกแก้ชื่อทีหลัง
     UnitPrice       DECIMAL(10,2)   NOT NULL,
     Quantity        INT             NOT NULL DEFAULT 1,
+    -- สถานะ payout ต่อ vendor (เพิ่มตอนทำ roadmap ข้อ 9.6) — เฉพาะรายการที่มี VendorId ไม่ NULL
+    PayoutStatus     NVARCHAR(20)   NOT NULL DEFAULT 'pending', -- pending | eligible | paid
+    PayoutEligibleAt DATETIME2      NULL,   -- = Order.ShippedAt + Tenant.EscrowDays, ตั้งตอน order เปลี่ยนเป็น shipped
+    PayoutBatchId    INT            NULL,   -- FK -> VendorPayoutBatches, NULL จนกว่าจะถูกจัดเข้ารอบ
     CONSTRAINT FK_OrderItems_Orders   FOREIGN KEY (OrderId)   REFERENCES Orders(OrderId) ON DELETE CASCADE,
     CONSTRAINT FK_OrderItems_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
 );
@@ -423,6 +429,28 @@ CREATE TABLE Shipments (
 
 CREATE INDEX IX_Shipments_Order ON Shipments(OrderId);
 CREATE INDEX IX_Shipments_Vendor ON Shipments(VendorId);
+
+-- ===== VendorPayoutBatches (รอบจ่ายเงินผู้ขาย — escrow + commission, เพิ่มตอนทำ roadmap ข้อ 9.6) =====
+-- ไม่มีการโอนเงินอัตโนมัติจริง เก็บไว้แค่คำนวณ/สรุปยอดที่ต้องจ่ายให้ถูกต้องต่อรอบ ให้แอดมินโอนเองนอกระบบแล้วมาติ๊กว่า "จ่ายแล้ว"
+CREATE TABLE VendorPayoutBatches (
+    PayoutBatchId    INT IDENTITY(1,1) PRIMARY KEY,
+    VendorId         INT             NOT NULL,
+    PeriodStart      DATETIME2       NOT NULL,
+    PeriodEnd        DATETIME2       NOT NULL,
+    GrossAmount      DECIMAL(10,2)   NOT NULL,
+    CommissionAmount DECIMAL(10,2)   NOT NULL,   -- = GrossAmount * Vendor.CommissionPercent/100 ณ เวลาที่สร้างรอบ (ไม่ recalculate ย้อนหลังถ้า commission % เปลี่ยนทีหลัง)
+    GatewayFeeAmount DECIMAL(10,2)   NOT NULL DEFAULT 0, -- เตรียมไว้เฉยๆ ยังไม่มี logic คำนวณจริง (payment gateway ปัจจุบันเป็น mock)
+    NetAmount        DECIMAL(10,2)   NOT NULL,   -- = GrossAmount - CommissionAmount - GatewayFeeAmount
+    Status           NVARCHAR(20)    NOT NULL DEFAULT 'pending', -- pending | paid
+    PaidAt           DATETIME2       NULL,
+    CreatedAt        DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_VendorPayoutBatches_Vendors FOREIGN KEY (VendorId) REFERENCES Vendors(VendorId)
+);
+
+CREATE INDEX IX_VendorPayoutBatches_Vendor ON VendorPayoutBatches(VendorId);
+
+ALTER TABLE OrderItems
+    ADD CONSTRAINT FK_OrderItems_PayoutBatch FOREIGN KEY (PayoutBatchId) REFERENCES VendorPayoutBatches(PayoutBatchId);
 ```
 
 ### หมายเหตุการใช้งานกับ SQL Server
@@ -432,4 +460,5 @@ CREATE INDEX IX_Shipments_Vendor ON Shipments(VendorId);
 - ฟิลด์ `SlipVerifyStatus` ไว้เก็บผลจากระบบตรวจสลิปอัตโนมัติ แยกจาก `Status` ที่เป็นสถานะออร์เดอร์โดยรวม
 - ถ้าต้องรองรับ payment gateway ในอนาคต ให้เพิ่มตาราง `PaymentTransactions` แยกต่างหาก (เก็บ `GatewayName`, `TransactionRef`, `GatewayStatus`) ผูกกับ `OrderId` แทนการเพิ่มคอลัมน์ใน `Orders` ตรงๆ เพื่อรองรับหลาย gateway ในอนาคต
 - `Shipments.TrackingNumber` ไม่เก็บลิงก์ติดตามพัสดุไว้ในตาราง — generate ลิงก์ 17TRACK (`https://t.17track.net/en#nums={TrackingNumber}`) ตอน query ด้วย helper function เดียว (ดู [checkout-and-payment.md](./checkout-and-payment.md)) เพราะ 17TRACK auto-detect ขนส่งจากเลขพัสดุเองได้ ไม่ต้องเก็บ URL หรือแยก logic ต่อขนส่ง
+- `Vendors.CommissionPercent DECIMAL(5,2) NOT NULL DEFAULT 10.00` (เพิ่มตอนทำ roadmap ข้อ 9.6, แก้ต่อ vendor ได้ที่ `/admin/vendors/[id]/edit`) — ตาราง `Vendors` เต็มไม่ได้ซ้ำไว้ในไฟล์นี้ ดู [marketplace-vendors.md](./marketplace-vendors.md) และ `prisma/schema.prisma` เป็นแหล่งอ้างอิงหลัก
 - `PasswordHash` ใน `Users` ต้อง hash ด้วย bcrypt/argon2 เท่านั้น ห้ามเก็บรหัสผ่านแบบ plain text หรือ hash เอง

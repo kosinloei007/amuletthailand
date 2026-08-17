@@ -42,6 +42,8 @@ export default async function ShopSettingsPage({
           shopName={tenant.shopName}
           ownerContact={tenant.ownerContact}
           defaultMarkupPercent={tenant.defaultMarkupPercent.toString()}
+          escrowDays={tenant.escrowDays}
+          payoutCycleDays={tenant.payoutCycleDays}
         />
       </section>
 

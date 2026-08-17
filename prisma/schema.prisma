@@ -19,6 +19,9 @@ model Tenant {
   ownerContact         String?  @map("OwnerContact") @db.NVarChar(200)
   themeId              Int?     @map("ThemeId")
   defaultMarkupPercent Decimal  @default(30.00) @map("DefaultMarkupPercent") @db.Decimal(5, 2)
+  // ตั้งค่ารอบจ่ายเงินผู้ขาย (payout) ต่อร้าน — แก้ได้ที่ /admin/settings, ดู VendorPayoutBatch
+  escrowDays           Int      @default(7) @map("EscrowDays") // จำนวนวันหลัง order เป็น shipped ก่อนถือว่ายอดของ vendor พร้อมจัดเข้ารอบจ่าย
+  payoutCycleDays      Int      @default(15) @map("PayoutCycleDays") // ใช้เป็นข้อมูลอ้างอิงรอบจ่าย (ยังไม่มี cron อัตโนมัติ แอดมินเป็นคนกดสร้างรอบเอง)
   createdAt            DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
   updatedAt            DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
 
@@ -46,6 +49,7 @@ model Vendor {
   accountName   String?  @map("AccountName") @db.NVarChar(200)
   accountNumber String?  @map("AccountNumber") @db.NVarChar(50)
   status        String   @default("active") @map("Status") @db.NVarChar(20) // active | suspended
+  commissionPercent Decimal @default(10.00) @map("CommissionPercent") @db.Decimal(5, 2) // % หักตอนจัดเข้ารอบจ่าย, แก้ได้ที่ /admin/vendors/[id]/edit
   // ช่องทางแจ้งเตือนออร์เดอร์ใหม่ต่อ vendor — tenant_admin กรอกให้ที่ /admin/vendors/[id]/edit
   // (bot token ใช้ร่วมจาก NotifyConfig ของ tenant เดิม ต่างแค่ chat id ปลายทาง), อีเมลใช้ Users.Email เดิมของ user ที่ผูก vendor นี้
   telegramChatId        String?  @map("TelegramChatId") @db.NVarChar(100)
@@ -54,11 +58,12 @@ model Vendor {
   createdAt     DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
   updatedAt     DateTime @default(dbgenerated("SYSUTCDATETIME()")) @updatedAt @map("UpdatedAt") @db.DateTime2
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
-  users      User[]
-  products   Product[]
-  orderItems OrderItem[]
-  shipments  Shipment[]
+  tenant       Tenant              @relation(fields: [tenantId], references: [tenantId], onDelete: NoAction, onUpdate: NoAction)
+  users        User[]
+  products     Product[]
+  orderItems   OrderItem[]
+  shipments    Shipment[]
+  payoutBatches VendorPayoutBatch[]
 
   @@index([tenantId])
   @@map("Vendors")
@@ -371,12 +376,18 @@ model OrderItem {
   vendorId    Int?    @map("VendorId") // เก็บผู้ขาย ณ เวลาซื้อ (snapshot เหมือน productName) กันกรณีสินค้าย้ายเจ้าของทีหลัง
   unitPrice   Decimal @map("UnitPrice") @db.Decimal(10, 2)
   quantity    Int     @default(1) @map("Quantity")
+  // สถานะ payout ต่อ vendor (เฉพาะรายการที่มี vendorId — สินค้าของร้านเองไม่ผ่าน flow นี้)
+  payoutStatus     String    @default("pending") @map("PayoutStatus") @db.NVarChar(20) // pending | eligible | paid
+  payoutEligibleAt DateTime? @map("PayoutEligibleAt") @db.DateTime2 // = order.shippedAt + tenant.escrowDays, ตั้งตอน order เปลี่ยนเป็น shipped
+  payoutBatchId    Int?      @map("PayoutBatchId")
 
-  order   Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [productId], onDelete: NoAction, onUpdate: NoAction)
-  vendor  Vendor? @relation(fields: [vendorId], references: [vendorId], onDelete: NoAction, onUpdate: NoAction)
+  order       Order              @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  product     Product            @relation(fields: [productId], references: [productId], onDelete: NoAction, onUpdate: NoAction)
+  vendor      Vendor?            @relation(fields: [vendorId], references: [vendorId], onDelete: NoAction, onUpdate: NoAction)
+  payoutBatch VendorPayoutBatch? @relation(fields: [payoutBatchId], references: [payoutBatchId], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([vendorId])
+  @@index([vendorId, payoutStatus])
   @@map("OrderItems")
 }
 
@@ -396,4 +407,25 @@ model Shipment {
   @@index([orderId])
   @@index([vendorId])
   @@map("Shipments")
+}
+
+// ===== VendorPayoutBatch (รอบจ่ายเงินผู้ขาย — escrow + commission, ไม่มีการโอนเงินอัตโนมัติจริง) =====
+model VendorPayoutBatch {
+  payoutBatchId    Int       @id @default(autoincrement()) @map("PayoutBatchId")
+  vendorId         Int       @map("VendorId")
+  periodStart      DateTime  @map("PeriodStart") @db.DateTime2
+  periodEnd        DateTime  @map("PeriodEnd") @db.DateTime2
+  grossAmount      Decimal   @map("GrossAmount") @db.Decimal(10, 2)
+  commissionAmount Decimal   @map("CommissionAmount") @db.Decimal(10, 2)
+  gatewayFeeAmount Decimal   @default(0) @map("GatewayFeeAmount") @db.Decimal(10, 2) // เตรียมไว้เฉยๆ ยังไม่มี logic คำนวณจริง (payment gateway ปัจจุบันเป็น mock)
+  netAmount        Decimal   @map("NetAmount") @db.Decimal(10, 2) // = grossAmount - commissionAmount - gatewayFeeAmount
+  status           String    @default("pending") @map("Status") @db.NVarChar(20) // pending | paid
+  paidAt           DateTime? @map("PaidAt") @db.DateTime2
+  createdAt        DateTime  @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+
+  vendor     Vendor      @relation(fields: [vendorId], references: [vendorId], onDelete: NoAction, onUpdate: NoAction)
+  orderItems OrderItem[]
+
+  @@index([vendorId])
+  @@map("VendorPayoutBatches")
 }

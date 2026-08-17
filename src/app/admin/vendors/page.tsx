@@ -58,9 +58,14 @@ export default async function VendorsPage() {
                   {vendor._count.products} สินค้า
                 </p>
               </div>
-              <Link href={`/admin/vendors/${vendor.vendorId}/edit`} className="shrink-0 text-sm underline">
-                แก้ไข
-              </Link>
+              <div className="flex shrink-0 gap-3">
+                <Link href={`/admin/vendors/${vendor.vendorId}/payouts`} className="text-sm underline">
+                  รอบจ่ายเงิน
+                </Link>
+                <Link href={`/admin/vendors/${vendor.vendorId}/edit`} className="text-sm underline">
+                  แก้ไข
+                </Link>
+              </div>
             </div>
             <form action={toggleVendorStatusAction}>
               <input type="hidden" name="vendorId" value={vendor.vendorId} />

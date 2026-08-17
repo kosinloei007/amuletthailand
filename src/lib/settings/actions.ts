@@ -20,6 +20,8 @@ export async function updateShopInfoAction(_prevState: ActionState, formData: Fo
   const shopName = String(formData.get("shopName") ?? "").trim();
   const ownerContact = String(formData.get("ownerContact") ?? "").trim();
   const defaultMarkupPercent = Number(formData.get("defaultMarkupPercent") ?? 30);
+  const escrowDays = Number(formData.get("escrowDays") ?? 7);
+  const payoutCycleDays = Number(formData.get("payoutCycleDays") ?? 15);
 
   if (!shopName) {
     return { error: "กรุณากรอกชื่อร้าน" };
@@ -27,10 +29,16 @@ export async function updateShopInfoAction(_prevState: ActionState, formData: Fo
   if (Number.isNaN(defaultMarkupPercent) || defaultMarkupPercent < 0) {
     return { error: "% บวกราคาขาย default ต้องเป็นตัวเลขไม่ติดลบ" };
   }
+  if (!Number.isInteger(escrowDays) || escrowDays < 0) {
+    return { error: "ระยะเวลา escrow ต้องเป็นจำนวนเต็มวันไม่ติดลบ" };
+  }
+  if (!Number.isInteger(payoutCycleDays) || payoutCycleDays < 1) {
+    return { error: "รอบจ่ายเงินต้องเป็นจำนวนเต็มวันอย่างน้อย 1 วัน" };
+  }
 
   await prisma.tenant.update({
     where: { tenantId },
-    data: { shopName, ownerContact: ownerContact || null, defaultMarkupPercent },
+    data: { shopName, ownerContact: ownerContact || null, defaultMarkupPercent, escrowDays, payoutCycleDays },
   });
 
   revalidatePath("/", "layout");

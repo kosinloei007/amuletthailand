@@ -29,6 +29,17 @@ export async function updateOrderStatusAction(formData: FormData) {
 
   await prisma.order.update({ where: { orderId }, data: { status } });
 
+  // เข้าเงื่อนไข escrow ตอน order เปลี่ยนเป็น shipped ครั้งแรก — คำนวณวันที่ยอดของ vendor พร้อมจัดเข้ารอบจ่าย (ดู docs/vendor-enhancements-plan.md ข้อ 6)
+  if (status === "shipped" && existing.status !== "shipped") {
+    const tenant = await prisma.tenant.findUniqueOrThrow({ where: { tenantId } });
+    const shippedAt = new Date();
+    const payoutEligibleAt = new Date(shippedAt.getTime() + tenant.escrowDays * 24 * 60 * 60 * 1000);
+    await prisma.orderItem.updateMany({
+      where: { orderId, vendorId: { not: null }, payoutStatus: "pending", payoutEligibleAt: null },
+      data: { payoutEligibleAt },
+    });
+  }
+
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
   redirect(`/admin/orders/${orderId}`);

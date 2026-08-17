@@ -26,12 +26,18 @@ function readShopFields(formData: FormData) {
   const telegramChatId = String(formData.get("telegramChatId") ?? "").trim();
   const notifyTelegramEnabled = formData.get("notifyTelegramEnabled") === "on";
   const notifyEmailEnabled = formData.get("notifyEmailEnabled") === "on";
+  // เฉพาะฟอร์มแก้ไข (ไม่มีในฟอร์มสร้างใหม่) — ไม่กรอก = ปล่อยให้ใช้ default 10% ตาม schema ตอนสร้าง หรือไม่เปลี่ยนค่าตอนแก้ไข
+  const commissionPercentRaw = String(formData.get("commissionPercent") ?? "").trim();
+  const commissionPercent = commissionPercentRaw ? Number(commissionPercentRaw) : undefined;
 
   if (!shopName || !contactName) {
     return { error: "กรุณากรอกชื่อร้านและชื่อผู้ติดต่อ" } as const;
   }
   if (notifyTelegramEnabled && !telegramChatId) {
     return { error: "กรุณากรอก Telegram chat id ก่อนเปิดใช้งานแจ้งเตือนผ่าน Telegram" } as const;
+  }
+  if (commissionPercent !== undefined && (!Number.isFinite(commissionPercent) || commissionPercent < 0 || commissionPercent > 100)) {
+    return { error: "ค่าคอมมิชชั่นต้องเป็นตัวเลข 0-100" } as const;
   }
 
   return {
@@ -45,6 +51,7 @@ function readShopFields(formData: FormData) {
       telegramChatId: telegramChatId || null,
       notifyTelegramEnabled,
       notifyEmailEnabled,
+      ...(commissionPercent !== undefined && { commissionPercent }),
     },
   } as const;
 }

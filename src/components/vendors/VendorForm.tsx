@@ -14,6 +14,7 @@ type VendorFormValues = {
   telegramChatId?: string | null;
   notifyTelegramEnabled?: boolean;
   notifyEmailEnabled?: boolean;
+  commissionPercent?: string | number;
 };
 
 export function VendorForm({
@@ -152,6 +153,24 @@ export function VendorForm({
           />
         </div>
       </div>
+
+      {!showLoginFields && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="commissionPercent" className="text-sm font-medium">
+            ค่าคอมมิชชั่น (%) — หักตอนจัดเข้ารอบจ่ายเงิน
+          </label>
+          <input
+            id="commissionPercent"
+            name="commissionPercent"
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            defaultValue={defaultValues?.commissionPercent ?? ""}
+            className="w-40 rounded-md border border-black/10 px-3 py-2"
+          />
+        </div>
+      )}
 
       {!showLoginFields && (
         <div className="flex flex-col gap-3 rounded-md bg-black/5 p-3">

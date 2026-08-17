@@ -112,7 +112,7 @@
     | [docs/theming.md](./docs/theming.md) | ระบบธีม/white-label ให้แต่ละร้านปรับสี โลโก้ ได้เอง |
     | [docs/home-and-catalog.md](./docs/home-and-catalog.md) | หน้าหลัก (รวม "พระเครื่องเข้ามาใหม่"), หน้ารายการสินค้า, หน้าโปรไฟล์หลวงพ่อ/จังหวัด |
     | [docs/marketplace-vendors.md](./docs/marketplace-vendors.md) | ระบบผู้ขายหลายรายในร้านเดียว (marketplace): บทบาท vendor, การจัดการสินค้า/ผู้ขาย, การมองเห็นสินค้าบนหน้าร้าน, ขอบเขตที่ยังไม่ทำ |
-    | [docs/vendor-enhancements-plan.md](./docs/vendor-enhancements-plan.md) | แผนงาน roadmap ข้อ 9 (ยังไม่ได้ทำ): แตกฟีเจอร์เสริมฝั่ง vendor ทั้ง 6 ข้อเป็น step (requirement → ER diagram → migration → backend → UI → testing → docs) |
+    | [docs/vendor-enhancements-plan.md](./docs/vendor-enhancements-plan.md) | แผนงาน roadmap ข้อ 9 (เสร็จครบ 6 ข้อแล้ว 2026-08-17): แตกฟีเจอร์เสริมฝั่ง vendor ทั้ง 6 ข้อเป็น step (requirement → ER diagram → migration → backend → UI → testing → docs) |
 
     เวลาทำงานในหัวข้อไหน ให้เปิดไฟล์ docs ที่เกี่ยวข้องอ่านก่อนเริ่มเขียนโค้ดเสมอ
 
@@ -144,4 +144,4 @@
     6. ✅ ตะกร้า + checkout (รวมส่วนลด/จัดส่งฟรีสมาชิก) + ตรวจสลิปอัตโนมัติ + ติดตามสถานะออร์เดอร์ — [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
     7. ✅ เชื่อมต่อ payment gateway — เป็น **mock/จำลอง** ตามที่ผู้ใช้ระบุ ("payment gateway ไม่ต้องใช้ให้ confirm ด้วยปุ่มที่หน้าจอเอา") ไม่ได้ต่อ Omise/2C2P จริง — ดูรายละเอียดที่ [docs/checkout-and-payment.md](./docs/checkout-and-payment.md)
     8. ✅ ระบบผู้ขายหลายราย — เลือก implement เป็น "หลายผู้ขายในร้านเดียว" (marketplace ภายใน tenant เดียว คล้าย Shopee/Lazada) ตามที่ผู้ใช้ระบุ — ดูรายละเอียดที่ [docs/marketplace-vendors.md](./docs/marketplace-vendors.md)
-    9. ⬜ ฟีเจอร์เสริมฝั่ง vendor (ยังไม่ได้ทำ) — ผู้ใช้ระบุ requirement ไว้แล้วใน [docs/marketplace-vendors.md](./docs/marketplace-vendors.md) หัวข้อ "แผนที่จะเพิ่ม": แจ้งเตือน vendor เมื่อมีออร์เดอร์ใหม่, หน้าแอดมินสรุป/ส่งรายการสั่งซื้อให้ vendor (แยกตามที่อยู่ลูกค้า), รหัสสินค้า (SKU), เลขพัสดุ/tracking number ต่อ vendor, ระบบ payout/commission (escrow + รอบจ่าย + หักค่าคอมมิชชั่น/gateway fee), vendor เปลี่ยนรหัสผ่านเอง — แผนงานแตกเป็น step ไว้แล้วที่ [docs/vendor-enhancements-plan.md](./docs/vendor-enhancements-plan.md)
+    9. ✅ ฟีเจอร์เสริมฝั่ง vendor (เสร็จครบ 6 ข้อแล้ว 2026-08-17) — รหัสสินค้า (SKU), vendor เปลี่ยนรหัสผ่านเอง, แจ้งเตือน vendor เมื่อมีออร์เดอร์ใหม่, หน้าแอดมินสรุป/ส่งรายการสั่งซื้อให้ vendor พร้อมปุ่ม Send Notify, เลขพัสดุ/tracking number ต่อ vendor (ลิงก์ 17TRACK), ระบบ payout/commission (escrow + รอบจ่าย + หักค่าคอมมิชชั่น, ไม่มี cron จริง ใช้ manual trigger) — ดูรายละเอียดที่ [docs/marketplace-vendors.md](./docs/marketplace-vendors.md) หัวข้อ "ฟีเจอร์เสริมฝั่ง vendor ที่ทำแล้ว" และ [docs/vendor-enhancements-plan.md](./docs/vendor-enhancements-plan.md)
