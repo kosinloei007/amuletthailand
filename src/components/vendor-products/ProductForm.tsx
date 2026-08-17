@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type { ActionState } from "@/lib/vendor-products/actions";
 
 type Option = { id: number; label: string };
+
+type ExistingImage = { id: number; url: string };
 
 type ProductFormValues = {
   productId?: number;
@@ -20,41 +22,138 @@ type ProductFormValues = {
   era?: string | null;
   hasCertificate?: boolean;
   certificateInfo?: string | null;
-  images?: { imageUrl: string }[];
-  certificateImages?: { imageUrl: string }[];
+  images?: ExistingImage[];
+  certificateImages?: ExistingImage[];
 };
 
 function RequiredMark() {
   return <span className="text-red-600"> *</span>;
 }
 
-function useSelectedFilePreviews() {
+function ImagePicker({
+  label,
+  required,
+  fileFieldName,
+  removeFieldName,
+  max,
+  helpText,
+  existingImages,
+}: {
+  label: string;
+  required: boolean;
+  fileFieldName: string;
+  removeFieldName: string;
+  max: number;
+  helpText: string;
+  existingImages: ExistingImage[];
+}) {
+  const [keptExisting, setKeptExisting] = useState<ExistingImage[]>(existingImages);
+  const [removedIds, setRemovedIds] = useState<number[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  function onChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    setPreviews((prevUrls) => {
-      prevUrls.forEach((url) => URL.revokeObjectURL(url));
-      return files.map((file) => URL.createObjectURL(file));
-    });
+  useEffect(() => {
+    const urls = newFiles.map((file) => URL.createObjectURL(file));
+    setPreviews(urls);
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [newFiles]);
+
+  const totalCount = keptExisting.length + newFiles.length;
+  const remaining = Math.max(0, max - totalCount);
+
+  function syncInputFiles(files: File[]) {
+    const dt = new DataTransfer();
+    files.forEach((file) => dt.items.add(file));
+    if (inputRef.current) inputRef.current.files = dt.files;
   }
 
-  return { previews, onChange };
-}
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files ? Array.from(e.target.files) : [];
+    const merged = [...newFiles, ...picked].slice(0, Math.max(0, max - keptExisting.length));
+    setNewFiles(merged);
+    syncInputFiles(merged);
+  }
 
-function ImageThumbnails({ previews, altPrefix }: { previews: string[]; altPrefix: string }) {
-  if (previews.length === 0) return null;
+  function removeExisting(id: number) {
+    setKeptExisting((prev) => prev.filter((img) => img.id !== id));
+    setRemovedIds((prev) => [...prev, id]);
+  }
+
+  function removeNew(index: number) {
+    const next = newFiles.filter((_, i) => i !== index);
+    setNewFiles(next);
+    syncInputFiles(next);
+  }
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {previews.map((url, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={url}
-          src={url}
-          alt={`${altPrefix} ${i + 1}`}
-          className="h-24 w-24 rounded-md border border-black/10 object-cover"
-        />
+    <div className="flex flex-col gap-1">
+      <label htmlFor={fileFieldName} className="text-sm font-medium">
+        {label}
+        {required && <RequiredMark />}
+      </label>
+
+      {removedIds.map((id) => (
+        <input key={id} type="hidden" name={removeFieldName} value={id} />
       ))}
+
+      {(keptExisting.length > 0 || previews.length > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {keptExisting.map((img) => (
+            <div key={img.id} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.url}
+                alt={label}
+                className="h-24 w-24 rounded-md border border-black/10 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeExisting(img.id)}
+                aria-label="ลบรูปนี้"
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {previews.map((url, i) => (
+            <div key={url} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt={label}
+                className="h-24 w-24 rounded-md border border-black/10 object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => removeNew(i)}
+                aria-label="ลบรูปนี้"
+                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={inputRef}
+        id={fileFieldName}
+        name={fileFieldName}
+        type="file"
+        multiple
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handleChange}
+        disabled={remaining === 0}
+        className="rounded-md border border-black/10 px-3 py-2 disabled:opacity-50"
+      />
+      <p className="text-xs text-black/50">
+        {totalCount}/{max} รูป — {helpText}
+      </p>
     </div>
   );
 }
@@ -76,8 +175,6 @@ export function ProductForm({
 }) {
   const [state, formAction, isPending] = useActionState(action, undefined);
   const [hasCertificate, setHasCertificate] = useState(defaultValues?.hasCertificate ?? false);
-  const mainImagePreviews = useSelectedFilePreviews();
-  const certImagePreviews = useSelectedFilePreviews();
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -262,44 +359,15 @@ export function ProductForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="imageFiles" className="text-sm font-medium">
-          รูปพระเครื่อง
-          <RequiredMark />
-        </label>
-        {mainImagePreviews.previews.length > 0 ? (
-          <ImageThumbnails previews={mainImagePreviews.previews} altPrefix="รูปพระเครื่องที่เลือก" />
-        ) : (
-          defaultValues?.images &&
-          defaultValues.images.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {defaultValues.images.map((img, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  src={img.imageUrl}
-                  alt={`รูปพระเครื่อง ${i + 1}`}
-                  className="h-24 w-24 rounded-md border border-black/10 object-cover"
-                />
-              ))}
-            </div>
-          )
-        )}
-        <input
-          id="imageFiles"
-          name="imageFiles"
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/webp"
-          onChange={mainImagePreviews.onChange}
-          className="rounded-md border border-black/10 px-3 py-2"
-        />
-        <p className="text-xs text-black/50">
-          {defaultValues?.images && defaultValues.images.length > 0
-            ? "เลือกไฟล์ใหม่เพื่อแทนที่รูปทั้งหมดเดิม (1-10 รูป) หรือปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยนรูป"
-            : "อัปโหลดอย่างน้อย 1 รูป ไม่เกิน 10 รูป (JPG/PNG/WebP ไม่เกิน 5MB ต่อไฟล์)"}
-        </p>
-      </div>
+      <ImagePicker
+        label="รูปพระเครื่อง"
+        required
+        fileFieldName="imageFiles"
+        removeFieldName="removeImageIds"
+        max={10}
+        helpText="เพิ่มรูปได้เรื่อยๆ ไม่เกิน 10 รูป กด × ที่มุมรูปเพื่อลบ (JPG/PNG/WebP ไม่เกิน 5MB ต่อไฟล์)"
+        existingImages={defaultValues?.images ?? []}
+      />
 
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -326,44 +394,15 @@ export function ProductForm({
             />
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label htmlFor="certificateImageFiles" className="text-sm font-medium">
-              รูปใบรับประกัน
-              <RequiredMark />
-            </label>
-            {certImagePreviews.previews.length > 0 ? (
-              <ImageThumbnails previews={certImagePreviews.previews} altPrefix="รูปใบรับประกันที่เลือก" />
-            ) : (
-              defaultValues?.certificateImages &&
-              defaultValues.certificateImages.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {defaultValues.certificateImages.map((img, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={i}
-                      src={img.imageUrl}
-                      alt={`รูปใบรับประกัน ${i + 1}`}
-                      className="h-24 w-24 rounded-md border border-black/10 object-cover"
-                    />
-                  ))}
-                </div>
-              )
-            )}
-            <input
-              id="certificateImageFiles"
-              name="certificateImageFiles"
-              type="file"
-              multiple
-              accept="image/jpeg,image/png,image/webp"
-              onChange={certImagePreviews.onChange}
-              className="rounded-md border border-black/10 px-3 py-2"
-            />
-            <p className="text-xs text-black/50">
-              {defaultValues?.certificateImages && defaultValues.certificateImages.length > 0
-                ? "เลือกไฟล์ใหม่เพื่อแทนที่รูปทั้งหมดเดิม (1-3 รูป) หรือปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยนรูป"
-                : "อัปโหลดอย่างน้อย 1 รูป ไม่เกิน 3 รูป (JPG/PNG/WebP ไม่เกิน 5MB ต่อไฟล์)"}
-            </p>
-          </div>
+          <ImagePicker
+            label="รูปใบรับประกัน"
+            required
+            fileFieldName="certificateImageFiles"
+            removeFieldName="removeCertificateImageIds"
+            max={3}
+            helpText="เพิ่มรูปได้เรื่อยๆ ไม่เกิน 3 รูป กด × ที่มุมรูปเพื่อลบ (JPG/PNG/WebP ไม่เกิน 5MB ต่อไฟล์)"
+            existingImages={defaultValues?.certificateImages ?? []}
+          />
         </div>
       )}
 

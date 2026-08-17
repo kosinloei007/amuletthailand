@@ -153,18 +153,38 @@ export async function updateVendorProductAction(_prevState: ActionState, formDat
     return { error: "รหัสพระเครื่องนี้มีอยู่แล้วในร้าน" };
   }
 
+  const removeImageIds = formData
+    .getAll("removeImageIds")
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
+  const removeCertificateImageIds = formData
+    .getAll("removeCertificateImageIds")
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
+
+  const remainingMainCount = existing.images.filter(
+    (i) => i.imageType === "product" && !removeImageIds.includes(i.productImageId),
+  ).length;
+  const remainingCertCount = existing.images.filter(
+    (i) => i.imageType === "certificate" && !removeCertificateImageIds.includes(i.productImageId),
+  ).length;
+
   const mainImageFiles = getImageFiles(formData, "imageFiles");
-  if (mainImageFiles.length > 10) {
+  const totalMainCount = remainingMainCount + mainImageFiles.length;
+  if (totalMainCount === 0) {
+    return { error: "กรุณาอัปโหลดรูปพระเครื่องอย่างน้อย 1 รูป" };
+  }
+  if (totalMainCount > 10) {
     return { error: "อัปโหลดรูปพระเครื่องได้ไม่เกิน 10 รูป" };
   }
 
   const certImageFiles = parsed.data.hasCertificate ? getImageFiles(formData, "certificateImageFiles") : [];
-  const existingCertCount = existing.images.filter((i) => i.imageType === "certificate").length;
   if (parsed.data.hasCertificate) {
-    if (certImageFiles.length === 0 && existingCertCount === 0) {
+    const totalCertCount = remainingCertCount + certImageFiles.length;
+    if (totalCertCount === 0) {
       return { error: "กรุณาอัปโหลดรูปใบรับประกันอย่างน้อย 1 รูป" };
     }
-    if (certImageFiles.length > 3) {
+    if (totalCertCount > 3) {
       return { error: "อัปโหลดรูปใบรับประกันได้ไม่เกิน 3 รูป" };
     }
   }
@@ -177,20 +197,40 @@ export async function updateVendorProductAction(_prevState: ActionState, formDat
   await prisma.$transaction(async (tx) => {
     await tx.product.update({ where: { productId }, data: parsed.data });
 
+    if (removeImageIds.length > 0) {
+      await tx.productImage.deleteMany({
+        where: { productId, imageType: "product", productImageId: { in: removeImageIds } },
+      });
+    }
     if (mainUpload.urls.length > 0) {
-      await tx.productImage.deleteMany({ where: { productId, imageType: "product" } });
       await tx.productImage.createMany({
-        data: mainUpload.urls.map((imageUrl, sortOrder) => ({ productId, imageUrl, imageType: "product", sortOrder })),
+        data: mainUpload.urls.map((imageUrl, i) => ({
+          productId,
+          imageUrl,
+          imageType: "product",
+          sortOrder: remainingMainCount + i,
+        })),
       });
     }
 
     if (!parsed.data.hasCertificate) {
       await tx.productImage.deleteMany({ where: { productId, imageType: "certificate" } });
-    } else if (certUpload.urls.length > 0) {
-      await tx.productImage.deleteMany({ where: { productId, imageType: "certificate" } });
-      await tx.productImage.createMany({
-        data: certUpload.urls.map((imageUrl, sortOrder) => ({ productId, imageUrl, imageType: "certificate", sortOrder })),
-      });
+    } else {
+      if (removeCertificateImageIds.length > 0) {
+        await tx.productImage.deleteMany({
+          where: { productId, imageType: "certificate", productImageId: { in: removeCertificateImageIds } },
+        });
+      }
+      if (certUpload.urls.length > 0) {
+        await tx.productImage.createMany({
+          data: certUpload.urls.map((imageUrl, i) => ({
+            productId,
+            imageUrl,
+            imageType: "certificate",
+            sortOrder: remainingCertCount + i,
+          })),
+        });
+      }
     }
   });
 

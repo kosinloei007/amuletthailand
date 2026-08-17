@@ -38,10 +38,12 @@ export default async function EditVendorProductPage({ params }: { params: Promis
           ...product,
           price: product.price.toString(),
           costPrice: product.costPrice?.toString() ?? null,
-          images: product.images.filter((i) => i.imageType === "product").map((i) => ({ imageUrl: i.imageUrl })),
+          images: product.images
+            .filter((i) => i.imageType === "product")
+            .map((i) => ({ id: i.productImageId, url: i.imageUrl })),
           certificateImages: product.images
             .filter((i) => i.imageType === "certificate")
-            .map((i) => ({ imageUrl: i.imageUrl })),
+            .map((i) => ({ id: i.productImageId, url: i.imageUrl })),
         }}
         provinces={provinces.map((p) => ({ id: p.provinceId, label: p.nameTh }))}
         monks={monks.map((m) => ({ id: m.monkId, label: m.name }))}
