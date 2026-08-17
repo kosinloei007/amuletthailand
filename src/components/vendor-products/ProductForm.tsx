@@ -28,6 +28,37 @@ function RequiredMark() {
   return <span className="text-red-600"> *</span>;
 }
 
+function useSelectedFilePreviews() {
+  const [previews, setPreviews] = useState<string[]>([]);
+
+  function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    setPreviews((prevUrls) => {
+      prevUrls.forEach((url) => URL.revokeObjectURL(url));
+      return files.map((file) => URL.createObjectURL(file));
+    });
+  }
+
+  return { previews, onChange };
+}
+
+function ImageThumbnails({ previews, altPrefix }: { previews: string[]; altPrefix: string }) {
+  if (previews.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {previews.map((url, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={url}
+          src={url}
+          alt={`${altPrefix} ${i + 1}`}
+          className="h-24 w-24 rounded-md border border-black/10 object-cover"
+        />
+      ))}
+    </div>
+  );
+}
+
 export function ProductForm({
   action,
   defaultValues,
@@ -45,6 +76,8 @@ export function ProductForm({
 }) {
   const [state, formAction, isPending] = useActionState(action, undefined);
   const [hasCertificate, setHasCertificate] = useState(defaultValues?.hasCertificate ?? false);
+  const mainImagePreviews = useSelectedFilePreviews();
+  const certImagePreviews = useSelectedFilePreviews();
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -234,18 +267,23 @@ export function ProductForm({
           รูปพระเครื่อง
           <RequiredMark />
         </label>
-        {defaultValues?.images && defaultValues.images.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {defaultValues.images.map((img, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={img.imageUrl}
-                alt={`รูปพระเครื่อง ${i + 1}`}
-                className="h-24 w-24 rounded-md border border-black/10 object-cover"
-              />
-            ))}
-          </div>
+        {mainImagePreviews.previews.length > 0 ? (
+          <ImageThumbnails previews={mainImagePreviews.previews} altPrefix="รูปพระเครื่องที่เลือก" />
+        ) : (
+          defaultValues?.images &&
+          defaultValues.images.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {defaultValues.images.map((img, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={img.imageUrl}
+                  alt={`รูปพระเครื่อง ${i + 1}`}
+                  className="h-24 w-24 rounded-md border border-black/10 object-cover"
+                />
+              ))}
+            </div>
+          )
         )}
         <input
           id="imageFiles"
@@ -253,6 +291,7 @@ export function ProductForm({
           type="file"
           multiple
           accept="image/jpeg,image/png,image/webp"
+          onChange={mainImagePreviews.onChange}
           className="rounded-md border border-black/10 px-3 py-2"
         />
         <p className="text-xs text-black/50">
@@ -292,18 +331,23 @@ export function ProductForm({
               รูปใบรับประกัน
               <RequiredMark />
             </label>
-            {defaultValues?.certificateImages && defaultValues.certificateImages.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {defaultValues.certificateImages.map((img, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={img.imageUrl}
-                    alt={`รูปใบรับประกัน ${i + 1}`}
-                    className="h-24 w-24 rounded-md border border-black/10 object-cover"
-                  />
-                ))}
-              </div>
+            {certImagePreviews.previews.length > 0 ? (
+              <ImageThumbnails previews={certImagePreviews.previews} altPrefix="รูปใบรับประกันที่เลือก" />
+            ) : (
+              defaultValues?.certificateImages &&
+              defaultValues.certificateImages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {defaultValues.certificateImages.map((img, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i}
+                      src={img.imageUrl}
+                      alt={`รูปใบรับประกัน ${i + 1}`}
+                      className="h-24 w-24 rounded-md border border-black/10 object-cover"
+                    />
+                  ))}
+                </div>
+              )
             )}
             <input
               id="certificateImageFiles"
@@ -311,6 +355,7 @@ export function ProductForm({
               type="file"
               multiple
               accept="image/jpeg,image/png,image/webp"
+              onChange={certImagePreviews.onChange}
               className="rounded-md border border-black/10 px-3 py-2"
             />
             <p className="text-xs text-black/50">
