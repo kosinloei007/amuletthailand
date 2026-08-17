@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
-import { toggleUserActiveAction, updateUserRoleAction } from "@/lib/users/actions";
+import { deleteUserAction, toggleUserActiveAction, updateUserRoleAction } from "@/lib/users/actions";
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: "ผู้ดูแลระบบสูงสุด",
@@ -34,9 +34,16 @@ export default async function UsersPage({
       </div>
 
       <p className="text-sm text-black/60">
-        เปลี่ยนสิทธิ์ได้เฉพาะสมาชิก/แอดมินร้าน/ผู้ดูแลระบบสูงสุด — บัญชีผู้ขาย (vendor) จัดการสิทธิ์ได้ที่หน้าผู้ขาย
+        เพิ่ม/แก้ไข/ลบผู้ใช้และเปลี่ยนสิทธิ์ได้เฉพาะสมาชิก/แอดมินร้าน/ผู้ดูแลระบบสูงสุด — บัญชีผู้ขาย (vendor) จัดการได้ที่หน้าผู้ขาย
         (Marketplace) เท่านั้น เพื่อไม่ให้ข้อมูลผู้ขายกับบัญชีผู้ใช้หลุดกัน
       </p>
+
+      <Link
+        href="/admin/users/new"
+        className="w-fit rounded-md bg-primary px-4 py-2 text-sm text-white"
+      >
+        + เพิ่มผู้ใช้ใหม่
+      </Link>
 
       {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-600">{error}</p>}
 
@@ -58,6 +65,21 @@ export default async function UsersPage({
                     {user.email} · {ROLE_LABEL[user.role] ?? user.role}
                   </p>
                 </div>
+                {user.role !== "vendor" && (
+                  <div className="flex shrink-0 gap-3">
+                    <Link href={`/admin/users/${user.userId}/edit`} className="text-sm underline">
+                      แก้ไข
+                    </Link>
+                    {!isSelf && (
+                      <form action={deleteUserAction}>
+                        <input type="hidden" name="userId" value={user.userId} />
+                        <button type="submit" className="text-sm text-red-600 underline">
+                          ลบ
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                )}
               </div>
 
               {user.role !== "vendor" && !isSelf && (
