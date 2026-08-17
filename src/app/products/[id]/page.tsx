@@ -63,7 +63,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
 
           <p className="text-2xl font-bold">{Number(product.price).toLocaleString("th-TH")} บาท</p>
-          {product.sku && <p className="text-sm text-black/60">รหัสสินค้า: {product.sku}</p>}
           {product.vendor && <p className="text-sm text-black/60">ขายโดย {product.vendor.shopName}</p>}
 
           <AddToCartButton

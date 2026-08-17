@@ -13,7 +13,7 @@ export default async function EditVendorProductPage({ params }: { params: Promis
   const [product, provinces, monks, categories] = await Promise.all([
     prisma.product.findFirst({
       where: { productId, vendorId: session.vendorId },
-      include: { images: { where: { imageType: "product" }, orderBy: { sortOrder: "asc" }, take: 1 } },
+      include: { images: { orderBy: { sortOrder: "asc" } } },
     }),
     prisma.province.findMany({ orderBy: { nameTh: "asc" } }),
     prisma.monk.findMany({ orderBy: { name: "asc" } }),
@@ -38,7 +38,10 @@ export default async function EditVendorProductPage({ params }: { params: Promis
           ...product,
           price: product.price.toString(),
           costPrice: product.costPrice?.toString() ?? null,
-          imageUrl: product.images[0]?.imageUrl ?? null,
+          images: product.images.filter((i) => i.imageType === "product").map((i) => ({ imageUrl: i.imageUrl })),
+          certificateImages: product.images
+            .filter((i) => i.imageType === "certificate")
+            .map((i) => ({ imageUrl: i.imageUrl })),
         }}
         provinces={provinces.map((p) => ({ id: p.provinceId, label: p.nameTh }))}
         monks={monks.map((m) => ({ id: m.monkId, label: m.name }))}

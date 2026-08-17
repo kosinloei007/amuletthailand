@@ -33,6 +33,9 @@ function readProductForm(formData: FormData) {
   if (!sku) {
     return { error: "กรุณากรอกรหัสพระเครื่อง (SKU)" } as const;
   }
+  if (sku.length > 10) {
+    return { error: "รหัสพระเครื่อง (SKU) ต้องไม่เกิน 10 ตัวอักษร" } as const;
+  }
   if (!Number.isFinite(price) || price <= 0) {
     return { error: "กรุณากรอกราคาขายให้ถูกต้อง" } as const;
   }
@@ -62,6 +65,20 @@ function readProductForm(formData: FormData) {
   } as const;
 }
 
+function getImageFiles(formData: FormData, field: string): File[] {
+  return formData.getAll(field).filter((f): f is File => f instanceof File && f.size > 0);
+}
+
+async function uploadAll(files: File[]): Promise<{ urls: string[] } | { error: string }> {
+  const urls: string[] = [];
+  for (const file of files) {
+    const result = await uploadProductImageFile(file);
+    if ("error" in result) return { error: result.error };
+    urls.push(result.url);
+  }
+  return { urls };
+}
+
 export async function createVendorProductAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireVendor();
   const parsed = readProductForm(formData);
@@ -74,22 +91,40 @@ export async function createVendorProductAction(_prevState: ActionState, formDat
     return { error: "รหัสพระเครื่องนี้มีอยู่แล้วในร้าน" };
   }
 
-  let imageUrl: string | null = null;
-  const imageFile = formData.get("imageFile");
-  if (imageFile instanceof File && imageFile.size > 0) {
-    const uploadResult = await uploadProductImageFile(imageFile);
-    if ("error" in uploadResult) return { error: uploadResult.error };
-    imageUrl = uploadResult.url;
+  const mainImageFiles = getImageFiles(formData, "imageFiles");
+  if (mainImageFiles.length === 0) {
+    return { error: "กรุณาอัปโหลดรูปพระเครื่องอย่างน้อย 1 รูป" };
   }
+  if (mainImageFiles.length > 10) {
+    return { error: "อัปโหลดรูปพระเครื่องได้ไม่เกิน 10 รูป" };
+  }
+
+  const certImageFiles = parsed.data.hasCertificate ? getImageFiles(formData, "certificateImageFiles") : [];
+  if (parsed.data.hasCertificate) {
+    if (certImageFiles.length === 0) {
+      return { error: "กรุณาอัปโหลดรูปใบรับประกันอย่างน้อย 1 รูป" };
+    }
+    if (certImageFiles.length > 3) {
+      return { error: "อัปโหลดรูปใบรับประกันได้ไม่เกิน 3 รูป" };
+    }
+  }
+
+  const mainUpload = await uploadAll(mainImageFiles);
+  if ("error" in mainUpload) return { error: mainUpload.error };
+  const certUpload = await uploadAll(certImageFiles);
+  if ("error" in certUpload) return { error: certUpload.error };
 
   await prisma.product.create({
     data: {
       ...parsed.data,
       tenantId: session.tenantId!,
       vendorId: session.vendorId,
-      ...(imageUrl && {
-        images: { create: { imageUrl, imageType: "product", sortOrder: 0 } },
-      }),
+      images: {
+        create: [
+          ...mainUpload.urls.map((imageUrl, sortOrder) => ({ imageUrl, imageType: "product", sortOrder })),
+          ...certUpload.urls.map((imageUrl, sortOrder) => ({ imageUrl, imageType: "certificate", sortOrder })),
+        ],
+      },
     },
   });
 
@@ -103,7 +138,10 @@ export async function updateVendorProductAction(_prevState: ActionState, formDat
   const parsed = readProductForm(formData);
   if ("error" in parsed) return { error: parsed.error };
 
-  const existing = await prisma.product.findFirst({ where: { productId, vendorId: session.vendorId } });
+  const existing = await prisma.product.findFirst({
+    where: { productId, vendorId: session.vendorId },
+    include: { images: true },
+  });
   if (!existing) {
     return { error: "ไม่พบพระเครื่ององค์นี้" };
   }
@@ -115,20 +153,43 @@ export async function updateVendorProductAction(_prevState: ActionState, formDat
     return { error: "รหัสพระเครื่องนี้มีอยู่แล้วในร้าน" };
   }
 
-  let imageUrl: string | null = null;
-  const imageFile = formData.get("imageFile");
-  if (imageFile instanceof File && imageFile.size > 0) {
-    const uploadResult = await uploadProductImageFile(imageFile);
-    if ("error" in uploadResult) return { error: uploadResult.error };
-    imageUrl = uploadResult.url;
+  const mainImageFiles = getImageFiles(formData, "imageFiles");
+  if (mainImageFiles.length > 10) {
+    return { error: "อัปโหลดรูปพระเครื่องได้ไม่เกิน 10 รูป" };
   }
+
+  const certImageFiles = parsed.data.hasCertificate ? getImageFiles(formData, "certificateImageFiles") : [];
+  const existingCertCount = existing.images.filter((i) => i.imageType === "certificate").length;
+  if (parsed.data.hasCertificate) {
+    if (certImageFiles.length === 0 && existingCertCount === 0) {
+      return { error: "กรุณาอัปโหลดรูปใบรับประกันอย่างน้อย 1 รูป" };
+    }
+    if (certImageFiles.length > 3) {
+      return { error: "อัปโหลดรูปใบรับประกันได้ไม่เกิน 3 รูป" };
+    }
+  }
+
+  const mainUpload = await uploadAll(mainImageFiles);
+  if ("error" in mainUpload) return { error: mainUpload.error };
+  const certUpload = await uploadAll(certImageFiles);
+  if ("error" in certUpload) return { error: certUpload.error };
 
   await prisma.$transaction(async (tx) => {
     await tx.product.update({ where: { productId }, data: parsed.data });
-    if (imageUrl) {
+
+    if (mainUpload.urls.length > 0) {
       await tx.productImage.deleteMany({ where: { productId, imageType: "product" } });
-      await tx.productImage.create({
-        data: { productId, imageUrl, imageType: "product", sortOrder: 0 },
+      await tx.productImage.createMany({
+        data: mainUpload.urls.map((imageUrl, sortOrder) => ({ productId, imageUrl, imageType: "product", sortOrder })),
+      });
+    }
+
+    if (!parsed.data.hasCertificate) {
+      await tx.productImage.deleteMany({ where: { productId, imageType: "certificate" } });
+    } else if (certUpload.urls.length > 0) {
+      await tx.productImage.deleteMany({ where: { productId, imageType: "certificate" } });
+      await tx.productImage.createMany({
+        data: certUpload.urls.map((imageUrl, sortOrder) => ({ productId, imageUrl, imageType: "certificate", sortOrder })),
       });
     }
   });

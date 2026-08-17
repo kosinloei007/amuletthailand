@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/vendor-products/actions";
 
 type Option = { id: number; label: string };
@@ -20,7 +20,8 @@ type ProductFormValues = {
   era?: string | null;
   hasCertificate?: boolean;
   certificateInfo?: string | null;
-  imageUrl?: string | null;
+  images?: { imageUrl: string }[];
+  certificateImages?: { imageUrl: string }[];
 };
 
 function RequiredMark() {
@@ -43,6 +44,7 @@ export function ProductForm({
   categories: Option[];
 }) {
   const [state, formAction, isPending] = useActionState(action, undefined);
+  const [hasCertificate, setHasCertificate] = useState(defaultValues?.hasCertificate ?? false);
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -58,10 +60,13 @@ export function ProductForm({
           name="sku"
           type="text"
           required
+          maxLength={10}
           defaultValue={defaultValues?.sku ?? ""}
           className="rounded-md border border-black/10 px-3 py-2"
         />
-        <p className="text-xs text-black/50">ตั้งเองได้ตามต้องการ ต้องไม่ซ้ำกับพระเครื่ององค์อื่นในร้านของคุณ</p>
+        <p className="text-xs text-black/50">
+          ตั้งเองได้ตามต้องการ ไม่เกิน 10 ตัวอักษร ต้องไม่ซ้ำกับพระเครื่ององค์อื่นในร้านของคุณ
+        </p>
       </div>
 
       <div className="flex flex-col gap-1">
@@ -225,48 +230,97 @@ export function ProductForm({
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="imageFile" className="text-sm font-medium">
+        <label htmlFor="imageFiles" className="text-sm font-medium">
           รูปพระเครื่อง
+          <RequiredMark />
         </label>
-        {defaultValues?.imageUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={defaultValues.imageUrl}
-            alt="รูปพระเครื่องปัจจุบัน"
-            className="h-32 w-32 rounded-md border border-black/10 object-cover"
-          />
+        {defaultValues?.images && defaultValues.images.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {defaultValues.images.map((img, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={img.imageUrl}
+                alt={`รูปพระเครื่อง ${i + 1}`}
+                className="h-24 w-24 rounded-md border border-black/10 object-cover"
+              />
+            ))}
+          </div>
         )}
         <input
-          id="imageFile"
-          name="imageFile"
+          id="imageFiles"
+          name="imageFiles"
           type="file"
+          multiple
           accept="image/jpeg,image/png,image/webp"
           className="rounded-md border border-black/10 px-3 py-2"
         />
         <p className="text-xs text-black/50">
-          {defaultValues?.imageUrl
-            ? "อัปโหลดไฟล์ใหม่เพื่อแทนที่รูปเดิม หรือปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยนรูป"
-            : "รองรับไฟล์ JPG, PNG, WebP ขนาดไม่เกิน 5MB"}
+          {defaultValues?.images && defaultValues.images.length > 0
+            ? "เลือกไฟล์ใหม่เพื่อแทนที่รูปทั้งหมดเดิม (1-10 รูป) หรือปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยนรูป"
+            : "อัปโหลดอย่างน้อย 1 รูป ไม่เกิน 10 รูป (JPG/PNG/WebP ไม่เกิน 5MB ต่อไฟล์)"}
         </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="hasCertificate" defaultChecked={defaultValues?.hasCertificate} />
+        <input
+          type="checkbox"
+          name="hasCertificate"
+          checked={hasCertificate}
+          onChange={(e) => setHasCertificate(e.target.checked)}
+        />
         มีใบรับประกัน
       </label>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="certificateInfo" className="text-sm font-medium">
-          รายละเอียดใบรับประกัน (กรอกเมื่อมีใบรับประกัน)
-        </label>
-        <input
-          id="certificateInfo"
-          name="certificateInfo"
-          type="text"
-          defaultValue={defaultValues?.certificateInfo ?? ""}
-          className="rounded-md border border-black/10 px-3 py-2"
-        />
-      </div>
+      {hasCertificate && (
+        <div className="flex flex-col gap-4 rounded-md bg-black/5 p-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="certificateInfo" className="text-sm font-medium">
+              รายละเอียดใบรับประกัน
+            </label>
+            <input
+              id="certificateInfo"
+              name="certificateInfo"
+              type="text"
+              defaultValue={defaultValues?.certificateInfo ?? ""}
+              className="rounded-md border border-black/10 px-3 py-2"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="certificateImageFiles" className="text-sm font-medium">
+              รูปใบรับประกัน
+              <RequiredMark />
+            </label>
+            {defaultValues?.certificateImages && defaultValues.certificateImages.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {defaultValues.certificateImages.map((img, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={img.imageUrl}
+                    alt={`รูปใบรับประกัน ${i + 1}`}
+                    className="h-24 w-24 rounded-md border border-black/10 object-cover"
+                  />
+                ))}
+              </div>
+            )}
+            <input
+              id="certificateImageFiles"
+              name="certificateImageFiles"
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp"
+              className="rounded-md border border-black/10 px-3 py-2"
+            />
+            <p className="text-xs text-black/50">
+              {defaultValues?.certificateImages && defaultValues.certificateImages.length > 0
+                ? "เลือกไฟล์ใหม่เพื่อแทนที่รูปทั้งหมดเดิม (1-3 รูป) หรือปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยนรูป"
+                : "อัปโหลดอย่างน้อย 1 รูป ไม่เกิน 3 รูป (JPG/PNG/WebP ไม่เกิน 5MB ต่อไฟล์)"}
+            </p>
+          </div>
+        </div>
+      )}
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
 
