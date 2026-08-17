@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth/actions";
+import { notFound } from "next/navigation";
+import { requireShopAdmin } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 import { createPayoutBatchAction, markPayoutBatchPaidAction } from "@/lib/payouts/actions";
 
@@ -20,10 +20,7 @@ export default async function VendorPayoutsPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
+  const session = await requireShopAdmin();
   const { id } = await params;
   const { error } = await searchParams;
   const vendorId = Number(id);

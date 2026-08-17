@@ -3,22 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/auth/actions";
+import { requireShopAdmin } from "@/lib/auth/actions";
 import { sendTelegramMessage } from "@/lib/notifications/telegram";
 import { sendEmail } from "@/lib/notifications/email";
 
 export type ActionState = { error?: string; success?: string } | undefined;
 
-async function requireTenantAdmin() {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
-  return { tenantId: session.tenantId };
-}
-
 export async function updateNotifyConfigAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const { tenantId } = await requireTenantAdmin();
+  const { tenantId } = await requireShopAdmin();
   const telegramEnabled = formData.get("telegramEnabled") === "on";
   const telegramBotToken = String(formData.get("telegramBotToken") ?? "").trim();
   const telegramChatId = String(formData.get("telegramChatId") ?? "").trim();
@@ -56,7 +48,7 @@ export async function updateNotifyConfigAction(_prevState: ActionState, formData
 }
 
 export async function testSendNotificationAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const { tenantId } = await requireTenantAdmin();
+  const { tenantId } = await requireShopAdmin();
   void formData;
 
   const config = await prisma.notifyConfig.findUnique({ where: { tenantId } });

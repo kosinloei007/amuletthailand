@@ -3,18 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/auth/actions";
+import { requireShopAdmin } from "@/lib/auth/actions";
 import { hashPassword } from "@/lib/auth/password";
 
 export type ActionState = { error?: string } | undefined;
-
-async function requireTenantAdmin() {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
-  return { tenantId: session.tenantId };
-}
 
 function readShopFields(formData: FormData) {
   const shopName = String(formData.get("shopName") ?? "").trim();
@@ -57,7 +49,7 @@ function readShopFields(formData: FormData) {
 }
 
 export async function createVendorAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const { tenantId } = await requireTenantAdmin();
+  const { tenantId } = await requireShopAdmin();
   const parsed = readShopFields(formData);
   if ("error" in parsed) return { error: parsed.error };
 
@@ -98,7 +90,7 @@ export async function createVendorAction(_prevState: ActionState, formData: Form
 }
 
 export async function updateVendorAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const { tenantId } = await requireTenantAdmin();
+  const { tenantId } = await requireShopAdmin();
   const vendorId = Number(formData.get("vendorId"));
   const parsed = readShopFields(formData);
   if ("error" in parsed) return { error: parsed.error };
@@ -115,7 +107,7 @@ export async function updateVendorAction(_prevState: ActionState, formData: Form
 }
 
 export async function toggleVendorStatusAction(formData: FormData): Promise<void> {
-  const { tenantId } = await requireTenantAdmin();
+  const { tenantId } = await requireShopAdmin();
   const vendorId = Number(formData.get("vendorId"));
 
   const existing = await prisma.vendor.findFirst({ where: { vendorId, tenantId } });

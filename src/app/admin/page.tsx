@@ -64,8 +64,31 @@ export default async function AdminDashboardPage() {
           <Link href="/admin/notifications" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
             การแจ้งเตือน
           </Link>
+          <Link href="/admin/categories" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            หมวดหมู่สินค้า
+          </Link>
           <Link href="/admin/settings" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
             ตั้งค่าร้าน
+          </Link>
+        </div>
+      )}
+
+      {session.role === "super_admin" && (
+        <div className="flex flex-wrap gap-3">
+          <Link href="/admin/users" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            ผู้ใช้งานและสิทธิ์ (Role)
+          </Link>
+          <Link href="/admin/vendors" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            ผู้ขาย (Marketplace)
+          </Link>
+          <Link href="/admin/payment-info" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            บัญชีรับโอนเงิน
+          </Link>
+          <Link href="/admin/notifications" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            การแจ้งเตือน
+          </Link>
+          <Link href="/admin/categories" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
+            หมวดหมู่สินค้า
           </Link>
         </div>
       )}

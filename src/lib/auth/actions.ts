@@ -121,6 +121,28 @@ export async function requireVendor() {
   return session as typeof session & { vendorId: number };
 }
 
+// ใช้กับหน้า/action ที่ tenant_admin และ super_admin เข้าได้เหมือนกัน (ผู้ขาย, บัญชีรับโอนเงิน,
+// การแจ้งเตือน, หมวดหมู่สินค้า ฯลฯ) — super_admin ไม่มี tenantId ผูกตัวเอง (tenantId ใน session
+// เป็น NULL) จึง fallback ไปใช้ tenant เดียวที่มีอยู่ตอนนี้ผ่าน getCurrentTenant() แทน
+export async function requireShopAdmin() {
+  const session = await requireSession();
+  if (session.role !== "tenant_admin" && session.role !== "super_admin") {
+    redirect("/admin");
+  }
+  const tenantId = session.tenantId ?? (await getCurrentTenant()).tenantId;
+  return { ...session, tenantId };
+}
+
+// ใช้กับหน้า/action ที่เฉพาะ super_admin เท่านั้น (จัดการผู้ใช้/สิทธิ์ทั้งระบบ) — tenant_admin
+// ห้ามเข้าถึงเพราะเป็นการเปลี่ยนสิทธิ์ผู้ใช้คนอื่นรวมถึง promote เป็น super_admin ได้
+export async function requireSuperAdmin() {
+  const session = await requireSession();
+  if (session.role !== "super_admin") {
+    redirect("/admin");
+  }
+  return session;
+}
+
 export async function changeVendorPasswordAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
   const session = await requireVendor();
   const currentPassword = String(formData.get("currentPassword") ?? "");

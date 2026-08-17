@@ -1,14 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth/actions";
+import { requireShopAdmin } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 import { PaymentInfoForm } from "@/components/payment-info/PaymentInfoForm";
 
 export default async function PaymentInfoPage() {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
+  const session = await requireShopAdmin();
 
   const paymentInfo = await prisma.paymentInfo.findUnique({ where: { tenantId: session.tenantId } });
 

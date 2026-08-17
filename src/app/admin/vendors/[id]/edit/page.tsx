@@ -1,15 +1,12 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { requireSession } from "@/lib/auth/actions";
+import { requireShopAdmin } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 import { updateVendorAction } from "@/lib/vendors/actions";
 import { VendorForm } from "@/components/vendors/VendorForm";
 
 export default async function EditVendorPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
+  const session = await requireShopAdmin();
   const { id } = await params;
   const vendorId = Number(id);
 

@@ -3,19 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/auth/actions";
-
-async function requireTenantAdmin() {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
-  return { tenantId: session.tenantId };
-}
+import { requireShopAdmin } from "@/lib/auth/actions";
 
 // รวมยอด OrderItem ของ vendor ที่พ้นระยะ escrow แล้ว (payoutEligibleAt ผ่านมาแล้ว) และยังไม่เคยถูกจัดเข้ารอบ เข้า VendorPayoutBatch ใหม่
 export async function createPayoutBatchAction(formData: FormData) {
-  const { tenantId } = await requireTenantAdmin();
+  const { tenantId } = await requireShopAdmin();
   const vendorId = Number(formData.get("vendorId"));
 
   const vendor = await prisma.vendor.findFirst({ where: { vendorId, tenantId } });
@@ -58,7 +50,7 @@ export async function createPayoutBatchAction(formData: FormData) {
 }
 
 export async function markPayoutBatchPaidAction(formData: FormData) {
-  const { tenantId } = await requireTenantAdmin();
+  const { tenantId } = await requireShopAdmin();
   const payoutBatchId = Number(formData.get("payoutBatchId"));
   const vendorId = Number(formData.get("vendorId"));
 

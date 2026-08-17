@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth/actions";
+import { requireShopAdmin } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 import { createVendorAction, toggleVendorStatusAction } from "@/lib/vendors/actions";
 import { VendorForm } from "@/components/vendors/VendorForm";
@@ -11,10 +10,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function VendorsPage() {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
+  const session = await requireShopAdmin();
 
   const vendors = await prisma.vendor.findMany({
     where: { tenantId: session.tenantId },

@@ -1,14 +1,10 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireSession } from "@/lib/auth/actions";
+import { requireShopAdmin } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 import { NotifyConfigForm } from "@/components/notifications/NotifyConfigForm";
 
 export default async function NotificationsPage() {
-  const session = await requireSession();
-  if (session.role !== "tenant_admin" || !session.tenantId) {
-    redirect("/admin");
-  }
+  const session = await requireShopAdmin();
 
   const config = await prisma.notifyConfig.findUnique({ where: { tenantId: session.tenantId } });
 
