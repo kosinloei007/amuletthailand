@@ -58,6 +58,7 @@ model Vendor {
   users      User[]
   products   Product[]
   orderItems OrderItem[]
+  shipments  Shipment[]
 
   @@index([tenantId])
   @@map("Vendors")
@@ -354,6 +355,7 @@ model Order {
   appliedStorePromotion StorePromotion? @relation("OrderAppliedStorePromotion", fields: [appliedStorePromotionId], references: [storePromotionId], onDelete: NoAction, onUpdate: NoAction)
   items                 OrderItem[]
   paymentTransactions   PaymentTransaction[]
+  shipments             Shipment[]
 
   @@index([tenantId, status])
   @@index([phone, orderNumber])
@@ -376,4 +378,22 @@ model OrderItem {
 
   @@index([vendorId])
   @@map("OrderItems")
+}
+
+// ===== Shipments (เลขพัสดุต่อ order/ผู้ขาย — 1 order อาจมีหลาย shipment ถ้าแต่ละ vendor แพ็คส่งแยกกัน) =====
+model Shipment {
+  shipmentId     Int      @id @default(autoincrement()) @map("ShipmentId")
+  orderId        Int      @map("OrderId")
+  vendorId       Int?     @map("VendorId") // NULL = สินค้าของร้านเอง (กรอกโดย tenant_admin แทน vendor)
+  carrierName    String   @map("CarrierName") @db.NVarChar(100) // เก็บไว้แสดงผล/อ้างอิงเท่านั้น ไม่ได้ใช้คำนวณลิงก์ติดตาม
+  trackingNumber String   @map("TrackingNumber") @db.NVarChar(100)
+  shippedAt      DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("ShippedAt") @db.DateTime2
+  createdAt      DateTime @default(dbgenerated("SYSUTCDATETIME()")) @map("CreatedAt") @db.DateTime2
+
+  order  Order   @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  vendor Vendor? @relation(fields: [vendorId], references: [vendorId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([orderId])
+  @@index([vendorId])
+  @@map("Shipments")
 }

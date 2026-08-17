@@ -1,5 +1,6 @@
 import { getCurrentTenant } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
+import { buildTrackingUrl } from "@/lib/shipments/trackingUrl";
 
 const STATUS_LABEL: Record<string, string> = {
   pending_verify: "รอตรวจสอบการชำระเงิน",
@@ -20,7 +21,7 @@ export default async function TrackOrderPage({
     orderNumber && phone
       ? await prisma.order.findFirst({
           where: { tenantId: tenant.tenantId, orderNumber: orderNumber.trim(), phone: phone.trim() },
-          include: { items: true },
+          include: { items: true, shipments: { include: { vendor: { select: { shopName: true } } } } },
         })
       : null;
 
@@ -90,6 +91,23 @@ export default async function TrackOrderPage({
             <span>ยอดรวมสุทธิ</span>
             <span>{Number(order.totalAmount).toLocaleString("th-TH")} บาท</span>
           </div>
+          {order.shipments.length > 0 && (
+            <div className="flex flex-col gap-1 border-t border-black/10 pt-2 text-sm">
+              <p className="font-medium">เลขพัสดุ</p>
+              {order.shipments.map((s) => (
+                <a
+                  key={s.shipmentId}
+                  href={buildTrackingUrl(s.trackingNumber)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary underline"
+                >
+                  {s.vendor ? `${s.vendor.shopName} — ` : ""}
+                  {s.carrierName} {s.trackingNumber} (ติดตามผ่าน 17TRACK)
+                </a>
+              ))}
+            </div>
+          )}
           <p className="text-xs text-black/50">สั่งซื้อเมื่อ {order.createdAt.toLocaleString("th-TH")}</p>
         </div>
       )}

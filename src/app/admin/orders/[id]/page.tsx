@@ -2,7 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
-import { updateOrderStatusAction, updateSlipVerifyStatusAction, sendVendorNotifyAction } from "@/lib/admin-orders/actions";
+import {
+  updateOrderStatusAction,
+  updateSlipVerifyStatusAction,
+  sendVendorNotifyAction,
+  saveHouseShipmentAction,
+} from "@/lib/admin-orders/actions";
+import { buildTrackingUrl } from "@/lib/shipments/trackingUrl";
+import { CARRIER_OPTIONS } from "@/lib/shipments/carriers";
 
 const STATUS_LABEL: Record<string, string> = {
   pending_verify: "รอตรวจสอบ",
@@ -23,20 +30,21 @@ export default async function AdminOrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ notified?: string }>;
+  searchParams: Promise<{ notified?: string; shipped?: string }>;
 }) {
   const session = await requireSession();
   if (session.role !== "tenant_admin" || !session.tenantId) {
     redirect("/admin");
   }
   const { id } = await params;
-  const { notified } = await searchParams;
+  const { notified, shipped } = await searchParams;
   const orderId = Number(id);
 
   const order = await prisma.order.findFirst({
     where: { orderId, tenantId: session.tenantId },
     include: {
       items: { include: { product: { select: { sku: true } }, vendor: { select: { vendorId: true, shopName: true } } } },
+      shipments: true,
       user: true,
       appliedMemberTier: true,
       appliedStorePromotion: true,
@@ -59,6 +67,11 @@ export default async function AdminOrderDetailPage({
   }
   const notifiedVendorName =
     notified && vendorGroups.get(Number(notified))?.vendor?.shopName;
+
+  const shipmentByKey = new Map<number | "own", (typeof order.shipments)[number]>();
+  for (const s of order.shipments) {
+    shipmentByKey.set(s.vendorId ?? "own", s);
+  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-12">
@@ -148,6 +161,75 @@ export default async function AdminOrderDetailPage({
           </div>
         </section>
       ) : null}
+
+      <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4">
+        <h2 className="font-medium">การจัดส่ง (เลขพัสดุ)</h2>
+        {shipped && <p className="text-sm text-accent">บันทึกเลขพัสดุแล้ว</p>}
+        <div className="flex flex-col gap-3">
+          {Array.from(vendorGroups.entries()).map(([key, { vendor, items: groupItems }]) => {
+            const shipment = shipmentByKey.get(key);
+            const isKnownCarrier = shipment ? CARRIER_OPTIONS.includes(shipment.carrierName) : false;
+            return (
+              <div key={key} className="flex flex-col gap-2 rounded-md bg-black/5 p-3 text-sm">
+                <p className="font-medium">
+                  {vendor ? vendor.shopName : "สินค้าของร้านเอง"} ({groupItems.length} รายการ)
+                </p>
+                {shipment ? (
+                  <a
+                    href={buildTrackingUrl(shipment.trackingNumber)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline"
+                  >
+                    ติดตามพัสดุผ่าน 17TRACK — {shipment.carrierName} {shipment.trackingNumber}
+                  </a>
+                ) : (
+                  <p className="text-black/50">
+                    {vendor ? "ผู้ขายยังไม่ได้กรอกเลขพัสดุ" : "ยังไม่มีเลขพัสดุ"}
+                  </p>
+                )}
+                {!vendor && (
+                  <form action={saveHouseShipmentAction} className="flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="orderId" value={order.orderId} />
+                    <select
+                      name="carrierName"
+                      defaultValue={shipment ? (isKnownCarrier ? shipment.carrierName : "other") : ""}
+                      className="rounded-md border border-black/10 px-2 py-1.5 text-xs"
+                    >
+                      <option value="" disabled>
+                        เลือกขนส่ง
+                      </option>
+                      {CARRIER_OPTIONS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                      <option value="other">อื่นๆ (ระบุเอง)</option>
+                    </select>
+                    <input
+                      name="carrierNameOther"
+                      type="text"
+                      placeholder="ระบุขนส่ง (ถ้าเลือกอื่นๆ)"
+                      defaultValue={shipment && !isKnownCarrier ? shipment.carrierName : ""}
+                      className="rounded-md border border-black/10 px-2 py-1.5 text-xs"
+                    />
+                    <input
+                      name="trackingNumber"
+                      type="text"
+                      placeholder="เลขพัสดุ"
+                      defaultValue={shipment?.trackingNumber ?? ""}
+                      className="rounded-md border border-black/10 px-2 py-1.5 text-xs"
+                    />
+                    <button type="submit" className="rounded-md bg-primary px-3 py-1.5 text-xs text-white">
+                      {shipment ? "อัปเดตเลขพัสดุ" : "บันทึกเลขพัสดุ"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {order.paymentTransactions.length > 0 ? (
         <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm">

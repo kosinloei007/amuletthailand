@@ -406,6 +406,23 @@ CREATE TABLE OrderItems (
     CONSTRAINT FK_OrderItems_Orders   FOREIGN KEY (OrderId)   REFERENCES Orders(OrderId) ON DELETE CASCADE,
     CONSTRAINT FK_OrderItems_Products FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
 );
+
+-- ===== Shipments (เลขพัสดุต่อ order/ผู้ขาย — เพิ่มตอนทำ roadmap ข้อ 9.5) =====
+-- 1 order อาจมีหลายแถวถ้าแต่ละ vendor แพ็คส่งแยกกัน (VendorId ผูกกับตาราง Vendors ที่เพิ่มไว้ตอนทำ marketplace, ดู docs/marketplace-vendors.md)
+CREATE TABLE Shipments (
+    ShipmentId      INT IDENTITY(1,1) PRIMARY KEY,
+    OrderId         INT             NOT NULL,
+    VendorId        INT             NULL,   -- NULL = สินค้าของร้านเอง (tenant_admin กรอกแทน vendor)
+    CarrierName     NVARCHAR(100)   NOT NULL,   -- เก็บไว้แสดงผล/อ้างอิงเท่านั้น ไม่ได้ใช้คำนวณลิงก์ติดตาม
+    TrackingNumber  NVARCHAR(100)   NOT NULL,
+    ShippedAt       DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedAt       DATETIME2       NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_Shipments_Orders  FOREIGN KEY (OrderId)  REFERENCES Orders(OrderId) ON DELETE CASCADE,
+    CONSTRAINT FK_Shipments_Vendors FOREIGN KEY (VendorId) REFERENCES Vendors(VendorId)
+);
+
+CREATE INDEX IX_Shipments_Order ON Shipments(OrderId);
+CREATE INDEX IX_Shipments_Vendor ON Shipments(VendorId);
 ```
 
 ### หมายเหตุการใช้งานกับ SQL Server
@@ -414,4 +431,5 @@ CREATE TABLE OrderItems (
 - คอลัมน์ `OrderNumber` และช่อง `Phone` ใน `Orders` มี index รวมกันไว้รองรับหน้าติดตามสถานะออร์เดอร์ (ค้นด้วยเลขออร์เดอร์ + เบอร์โทร)
 - ฟิลด์ `SlipVerifyStatus` ไว้เก็บผลจากระบบตรวจสลิปอัตโนมัติ แยกจาก `Status` ที่เป็นสถานะออร์เดอร์โดยรวม
 - ถ้าต้องรองรับ payment gateway ในอนาคต ให้เพิ่มตาราง `PaymentTransactions` แยกต่างหาก (เก็บ `GatewayName`, `TransactionRef`, `GatewayStatus`) ผูกกับ `OrderId` แทนการเพิ่มคอลัมน์ใน `Orders` ตรงๆ เพื่อรองรับหลาย gateway ในอนาคต
+- `Shipments.TrackingNumber` ไม่เก็บลิงก์ติดตามพัสดุไว้ในตาราง — generate ลิงก์ 17TRACK (`https://t.17track.net/en#nums={TrackingNumber}`) ตอน query ด้วย helper function เดียว (ดู [checkout-and-payment.md](./checkout-and-payment.md)) เพราะ 17TRACK auto-detect ขนส่งจากเลขพัสดุเองได้ ไม่ต้องเก็บ URL หรือแยก logic ต่อขนส่ง
 - `PasswordHash` ใน `Users` ต้อง hash ด้วย bcrypt/argon2 เท่านั้น ห้ามเก็บรหัสผ่านแบบ plain text หรือ hash เอง

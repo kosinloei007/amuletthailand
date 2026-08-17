@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireVendor } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
+import { ShipmentForm } from "@/components/vendor-orders/ShipmentForm";
+import { buildTrackingUrl } from "@/lib/shipments/trackingUrl";
 
 const STATUS_LABEL: Record<string, string> = {
   pending_verify: "รอตรวจสอบ",
@@ -9,12 +11,20 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "ยกเลิก",
 };
 
-export default async function VendorOrdersPage() {
+export default async function VendorOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ shipped?: string }>;
+}) {
   const session = await requireVendor();
+  const { shipped } = await searchParams;
 
   const items = await prisma.orderItem.findMany({
     where: { vendorId: session.vendorId },
-    include: { order: true, product: { select: { sku: true } } },
+    include: {
+      order: { include: { shipments: { where: { vendorId: session.vendorId } } } },
+      product: { select: { sku: true } },
+    },
     orderBy: { order: { createdAt: "desc" } },
   });
 
@@ -41,13 +51,14 @@ export default async function VendorOrdersPage() {
       </div>
 
       <p className="text-sm text-black/60">
-        แสดงเฉพาะรายการสินค้าของร้านคุณในแต่ละออร์เดอร์ — สถานะออร์เดอร์และการจัดส่งจัดการโดยแอดมินร้าน
+        แสดงเฉพาะรายการสินค้าของร้านคุณในแต่ละออร์เดอร์ — สถานะออร์เดอร์จัดการโดยแอดมินร้าน ส่วนเลขพัสดุกรอกเองได้ด้านล่าง
       </p>
 
       <div className="flex flex-col gap-4">
         {orderGroups.size === 0 && <p className="text-sm text-black/60">ยังไม่มีออร์เดอร์</p>}
         {Array.from(orderGroups.values()).map(({ order, items: groupItems }) => {
           const mySubtotal = groupItems.reduce((sum, item) => sum + Number(item.unitPrice) * item.quantity, 0);
+          const shipment = order.shipments[0];
           return (
             <div key={order.orderId} className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm">
               <div className="flex items-center justify-between">
@@ -77,6 +88,26 @@ export default async function VendorOrdersPage() {
               <div className="flex justify-between border-t border-black/10 pt-2 font-medium">
                 <span>ยอดสินค้าของร้านคุณ</span>
                 <span>{mySubtotal.toLocaleString("th-TH")} บาท</span>
+              </div>
+              <div className="flex flex-col gap-2 border-t border-black/10 pt-2">
+                {shipment && (
+                  <a
+                    href={buildTrackingUrl(shipment.trackingNumber)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-primary underline"
+                  >
+                    ติดตามพัสดุผ่าน 17TRACK — {shipment.carrierName} {shipment.trackingNumber}
+                  </a>
+                )}
+                {shipped === String(order.orderId) && (
+                  <p className="text-xs text-accent">บันทึกเลขพัสดุแล้ว</p>
+                )}
+                <ShipmentForm
+                  orderId={order.orderId}
+                  defaultCarrier={shipment?.carrierName}
+                  defaultTrackingNumber={shipment?.trackingNumber}
+                />
               </div>
             </div>
           );

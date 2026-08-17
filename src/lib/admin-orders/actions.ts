@@ -66,3 +66,27 @@ export async function sendVendorNotifyAction(formData: FormData) {
 
   redirect(`/admin/orders/${orderId}?notified=${vendorId}`);
 }
+
+// สำหรับสินค้าของร้านเอง (vendorId = NULL) — tenant_admin กรอกเลขพัสดุแทน vendor
+export async function saveHouseShipmentAction(formData: FormData) {
+  const { tenantId } = await requireTenantAdmin();
+  const orderId = Number(formData.get("orderId"));
+  const carrierSelect = String(formData.get("carrierName") ?? "").trim();
+  const carrierOther = String(formData.get("carrierNameOther") ?? "").trim();
+  const trackingNumber = String(formData.get("trackingNumber") ?? "").trim();
+  const carrierName = carrierSelect === "other" ? carrierOther : carrierSelect;
+
+  const order = await prisma.order.findFirst({ where: { orderId, tenantId } });
+  if (!order) redirect("/admin/orders");
+  if (!carrierName || !trackingNumber) redirect(`/admin/orders/${orderId}`);
+
+  const existing = await prisma.shipment.findFirst({ where: { orderId, vendorId: null } });
+  if (existing) {
+    await prisma.shipment.update({ where: { shipmentId: existing.shipmentId }, data: { carrierName, trackingNumber } });
+  } else {
+    await prisma.shipment.create({ data: { orderId, vendorId: null, carrierName, trackingNumber } });
+  }
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  redirect(`/admin/orders/${orderId}?shipped=house`);
+}
