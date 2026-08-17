@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireSession, logoutAction } from "@/lib/auth/actions";
+import { requireSession } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
 
 export default async function AdminDashboardPage() {
@@ -17,17 +17,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-12">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">แดชบอร์ดแอดมิน</h1>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="rounded-md border border-black/20 px-3 py-1.5 text-sm"
-          >
-            ออกจากระบบ
-          </button>
-        </form>
-      </div>
+      <h1 className="text-2xl font-semibold">แดชบอร์ดแอดมิน</h1>
 
       <p className="text-black/70">
         ยินดีต้อนรับ {session.fullName} ({session.role === "super_admin" ? "ผู้ดูแลระบบสูงสุด" : "แอดมินร้าน"})

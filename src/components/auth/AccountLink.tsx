@@ -47,15 +47,22 @@ export function AccountLink() {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="group relative">
       <Link href={accountHrefFor(session.role)} className="text-sm underline">
         สวัสดี, {session.fullName}
       </Link>
-      <form action={logoutAction}>
-        <button type="submit" className="text-sm underline">
-          ออกจากระบบ
-        </button>
-      </form>
+      <div className="invisible absolute right-0 top-full z-20 w-40 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100">
+        <div className="flex flex-col gap-1 rounded-md border border-black/10 bg-surface p-2 shadow-md">
+          <Link href={accountHrefFor(session.role)} className="rounded px-2 py-1.5 text-sm hover:bg-black/5">
+            บัญชีของฉัน
+          </Link>
+          <form action={logoutAction}>
+            <button type="submit" className="w-full rounded px-2 py-1.5 text-left text-sm hover:bg-black/5">
+              ออกจากระบบ
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
