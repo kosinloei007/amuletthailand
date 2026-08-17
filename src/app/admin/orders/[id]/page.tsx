@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth/actions";
 import { prisma } from "@/lib/prisma";
-import { updateOrderStatusAction, updateSlipVerifyStatusAction } from "@/lib/admin-orders/actions";
+import { updateOrderStatusAction, updateSlipVerifyStatusAction, sendVendorNotifyAction } from "@/lib/admin-orders/actions";
 
 const STATUS_LABEL: Record<string, string> = {
   pending_verify: "รอตรวจสอบ",
@@ -18,18 +18,25 @@ const SLIP_STATUS_LABEL: Record<string, string> = {
   unreadable: "อ่านสลิปไม่ได้",
 };
 
-export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AdminOrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ notified?: string }>;
+}) {
   const session = await requireSession();
   if (session.role !== "tenant_admin" || !session.tenantId) {
     redirect("/admin");
   }
   const { id } = await params;
+  const { notified } = await searchParams;
   const orderId = Number(id);
 
   const order = await prisma.order.findFirst({
     where: { orderId, tenantId: session.tenantId },
     include: {
-      items: { include: { product: { select: { sku: true } } } },
+      items: { include: { product: { select: { sku: true } }, vendor: { select: { vendorId: true, shopName: true } } } },
       user: true,
       appliedMemberTier: true,
       appliedStorePromotion: true,
@@ -39,6 +46,19 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   if (!order) {
     notFound();
   }
+
+  const vendorGroups = new Map<number | "own", { vendor: { vendorId: number; shopName: string } | null; items: typeof order.items }>();
+  for (const item of order.items) {
+    const key = item.vendorId ?? "own";
+    const existing = vendorGroups.get(key);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      vendorGroups.set(key, { vendor: item.vendor, items: [item] });
+    }
+  }
+  const notifiedVendorName =
+    notified && vendorGroups.get(Number(notified))?.vendor?.shopName;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-12">
@@ -97,6 +117,37 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
           <span>{Number(order.totalAmount).toLocaleString("th-TH")} บาท</span>
         </div>
       </section>
+
+      {vendorGroups.size > 1 || (vendorGroups.size === 1 && !vendorGroups.has("own")) ? (
+        <section className="flex flex-col gap-3 rounded-lg border border-black/10 p-4">
+          <h2 className="font-medium">แยกตามผู้ขาย ({order.items.length} รายการ)</h2>
+          {notifiedVendorName && (
+            <p className="text-sm text-accent">ส่งแจ้งเตือนไปยัง {notifiedVendorName} แล้ว</p>
+          )}
+          <div className="flex flex-col gap-2">
+            {Array.from(vendorGroups.values()).map(({ vendor, items: groupItems }) => (
+              <div
+                key={vendor?.vendorId ?? "own"}
+                className="flex items-center justify-between rounded-md bg-black/5 px-3 py-2 text-sm"
+              >
+                <span>
+                  ที่อยู่ลูกค้า {order.fullName} — {vendor ? vendor.shopName : "สินค้าของร้านเอง"} มี{" "}
+                  {groupItems.length} รายการ
+                </span>
+                {vendor && (
+                  <form action={sendVendorNotifyAction}>
+                    <input type="hidden" name="orderId" value={order.orderId} />
+                    <input type="hidden" name="vendorId" value={vendor.vendorId} />
+                    <button type="submit" className="shrink-0 rounded-md border border-black/20 px-3 py-1 text-xs">
+                      Send Notify
+                    </button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {order.paymentTransactions.length > 0 ? (
         <section className="flex flex-col gap-2 rounded-lg border border-black/10 p-4 text-sm">

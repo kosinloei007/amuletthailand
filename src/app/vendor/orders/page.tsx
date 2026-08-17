@@ -59,6 +59,10 @@ export default async function VendorOrdersPage() {
               <p className="text-black/60">
                 ลูกค้า: {order.fullName} ({order.phone}) · สั่งซื้อเมื่อ {order.createdAt.toLocaleString("th-TH")}
               </p>
+              <p className="text-black/60">
+                ที่อยู่จัดส่ง: {order.address} {order.subDistrict} {order.district} {order.province}{" "}
+                {order.postalCode}
+              </p>
               <div className="flex flex-col gap-1 border-t border-black/10 pt-2">
                 {groupItems.map((item) => (
                   <div key={item.orderItemId} className="flex justify-between">
