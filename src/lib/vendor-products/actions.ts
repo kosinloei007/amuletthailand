@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireVendor } from "@/lib/auth/actions";
+import { uploadProductImageFile } from "@/lib/vendor-products/uploadImage";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -21,17 +22,16 @@ function readProductForm(formData: FormData) {
   const era = String(formData.get("era") ?? "").trim();
   const hasCertificate = formData.get("hasCertificate") === "on";
   const certificateInfo = String(formData.get("certificateInfo") ?? "").trim();
-  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
 
   const price = Number(priceRaw);
   const costPrice = costPriceRaw ? Number(costPriceRaw) : undefined;
   const stock = Number(stockRaw);
 
   if (!name) {
-    return { error: "กรุณากรอกชื่อสินค้า" } as const;
+    return { error: "กรุณากรอกชื่อพระเครื่อง" } as const;
   }
   if (!sku) {
-    return { error: "กรุณากรอกรหัสสินค้า" } as const;
+    return { error: "กรุณากรอกรหัสพระเครื่อง (SKU)" } as const;
   }
   if (!Number.isFinite(price) || price <= 0) {
     return { error: "กรุณากรอกราคาขายให้ถูกต้อง" } as const;
@@ -59,7 +59,6 @@ function readProductForm(formData: FormData) {
       hasCertificate,
       certificateInfo: hasCertificate ? certificateInfo || null : null,
     },
-    imageUrl: imageUrl || null,
   } as const;
 }
 
@@ -72,7 +71,15 @@ export async function createVendorProductAction(_prevState: ActionState, formDat
     where: { tenantId: session.tenantId!, sku: parsed.data.sku },
   });
   if (duplicate) {
-    return { error: "รหัสสินค้านี้มีอยู่แล้วในร้าน" };
+    return { error: "รหัสพระเครื่องนี้มีอยู่แล้วในร้าน" };
+  }
+
+  let imageUrl: string | null = null;
+  const imageFile = formData.get("imageFile");
+  if (imageFile instanceof File && imageFile.size > 0) {
+    const uploadResult = await uploadProductImageFile(imageFile);
+    if ("error" in uploadResult) return { error: uploadResult.error };
+    imageUrl = uploadResult.url;
   }
 
   await prisma.product.create({
@@ -80,8 +87,8 @@ export async function createVendorProductAction(_prevState: ActionState, formDat
       ...parsed.data,
       tenantId: session.tenantId!,
       vendorId: session.vendorId,
-      ...(parsed.imageUrl && {
-        images: { create: { imageUrl: parsed.imageUrl, imageType: "product", sortOrder: 0 } },
+      ...(imageUrl && {
+        images: { create: { imageUrl, imageType: "product", sortOrder: 0 } },
       }),
     },
   });
@@ -98,22 +105,30 @@ export async function updateVendorProductAction(_prevState: ActionState, formDat
 
   const existing = await prisma.product.findFirst({ where: { productId, vendorId: session.vendorId } });
   if (!existing) {
-    return { error: "ไม่พบสินค้านี้" };
+    return { error: "ไม่พบพระเครื่ององค์นี้" };
   }
 
   const duplicate = await prisma.product.findFirst({
     where: { tenantId: session.tenantId!, sku: parsed.data.sku, productId: { not: productId } },
   });
   if (duplicate) {
-    return { error: "รหัสสินค้านี้มีอยู่แล้วในร้าน" };
+    return { error: "รหัสพระเครื่องนี้มีอยู่แล้วในร้าน" };
+  }
+
+  let imageUrl: string | null = null;
+  const imageFile = formData.get("imageFile");
+  if (imageFile instanceof File && imageFile.size > 0) {
+    const uploadResult = await uploadProductImageFile(imageFile);
+    if ("error" in uploadResult) return { error: uploadResult.error };
+    imageUrl = uploadResult.url;
   }
 
   await prisma.$transaction(async (tx) => {
     await tx.product.update({ where: { productId }, data: parsed.data });
-    if (parsed.imageUrl) {
+    if (imageUrl) {
       await tx.productImage.deleteMany({ where: { productId, imageType: "product" } });
       await tx.productImage.create({
-        data: { productId, imageUrl: parsed.imageUrl, imageType: "product", sortOrder: 0 },
+        data: { productId, imageUrl, imageType: "product", sortOrder: 0 },
       });
     }
   });

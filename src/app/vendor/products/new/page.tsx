@@ -16,14 +16,14 @@ export default async function NewVendorProductPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">เพิ่มสินค้าใหม่</h1>
+        <h1 className="text-2xl font-semibold">เพิ่มพระเครื่องใหม่</h1>
         <Link href="/vendor/products" className="text-sm underline">
           กลับ
         </Link>
       </div>
       <ProductForm
         action={createVendorProductAction}
-        submitLabel="เพิ่มสินค้า"
+        submitLabel="เพิ่มพระเครื่อง"
         provinces={provinces.map((p) => ({ id: p.provinceId, label: p.nameTh }))}
         monks={monks.map((m) => ({ id: m.monkId, label: m.name }))}
         categories={categories.map((c) => ({ id: c.categoryId, label: c.name }))}

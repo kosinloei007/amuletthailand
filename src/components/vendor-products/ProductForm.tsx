@@ -23,6 +23,10 @@ type ProductFormValues = {
   imageUrl?: string | null;
 };
 
+function RequiredMark() {
+  return <span className="text-red-600"> *</span>;
+}
+
 export function ProductForm({
   action,
   defaultValues,
@@ -45,22 +49,9 @@ export function ProductForm({
       {defaultValues?.productId && <input type="hidden" name="productId" value={defaultValues.productId} />}
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="name" className="text-sm font-medium">
-          ชื่อสินค้า
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          required
-          defaultValue={defaultValues?.name}
-          className="rounded-md border border-black/10 px-3 py-2"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
         <label htmlFor="sku" className="text-sm font-medium">
-          รหัสสินค้า (SKU)
+          รหัสพระเครื่อง (SKU)
+          <RequiredMark />
         </label>
         <input
           id="sku"
@@ -70,7 +61,22 @@ export function ProductForm({
           defaultValue={defaultValues?.sku ?? ""}
           className="rounded-md border border-black/10 px-3 py-2"
         />
-        <p className="text-xs text-black/50">ตั้งเองได้ตามต้องการ ต้องไม่ซ้ำกับสินค้าอื่นในร้านของคุณ</p>
+        <p className="text-xs text-black/50">ตั้งเองได้ตามต้องการ ต้องไม่ซ้ำกับพระเครื่ององค์อื่นในร้านของคุณ</p>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="name" className="text-sm font-medium">
+          ชื่อพระเครื่อง
+          <RequiredMark />
+        </label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          required
+          defaultValue={defaultValues?.name}
+          className="rounded-md border border-black/10 px-3 py-2"
+        />
       </div>
 
       <div className="flex flex-col gap-1">
@@ -90,6 +96,7 @@ export function ProductForm({
         <div className="flex flex-col gap-1">
           <label htmlFor="price" className="text-sm font-medium">
             ราคาขาย (บาท)
+            <RequiredMark />
           </label>
           <input
             id="price"
@@ -119,6 +126,7 @@ export function ProductForm({
         <div className="flex flex-col gap-1">
           <label htmlFor="stock" className="text-sm font-medium">
             จำนวนสต็อก
+            <RequiredMark />
           </label>
           <input
             id="stock"
@@ -217,18 +225,29 @@ export function ProductForm({
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="imageUrl" className="text-sm font-medium">
-          URL รูปสินค้า
+        <label htmlFor="imageFile" className="text-sm font-medium">
+          รูปพระเครื่อง
         </label>
+        {defaultValues?.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={defaultValues.imageUrl}
+            alt="รูปพระเครื่องปัจจุบัน"
+            className="h-32 w-32 rounded-md border border-black/10 object-cover"
+          />
+        )}
         <input
-          id="imageUrl"
-          name="imageUrl"
-          type="url"
-          placeholder="https://..."
-          defaultValue={defaultValues?.imageUrl ?? ""}
+          id="imageFile"
+          name="imageFile"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
           className="rounded-md border border-black/10 px-3 py-2"
         />
-        <p className="text-xs text-black/50">ยังไม่รองรับอัปโหลดไฟล์โดยตรง — ใช้ URL รูปที่โฮสต์ไว้แล้วไปก่อน</p>
+        <p className="text-xs text-black/50">
+          {defaultValues?.imageUrl
+            ? "อัปโหลดไฟล์ใหม่เพื่อแทนที่รูปเดิม หรือปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยนรูป"
+            : "รองรับไฟล์ JPG, PNG, WebP ขนาดไม่เกิน 5MB"}
+        </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm">

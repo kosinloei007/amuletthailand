@@ -26,7 +26,7 @@ export default async function EditVendorProductPage({ params }: { params: Promis
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">แก้ไขสินค้า</h1>
+        <h1 className="text-2xl font-semibold">แก้ไขพระเครื่อง</h1>
         <Link href="/vendor/products" className="text-sm underline">
           กลับ
         </Link>

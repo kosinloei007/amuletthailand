@@ -15,18 +15,18 @@ export default async function VendorProductsPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-4 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">สินค้าของฉัน</h1>
+        <h1 className="text-2xl font-semibold">พระเครื่องของฉัน</h1>
         <Link href="/vendor" className="text-sm underline">
           กลับไปแดชบอร์ด
         </Link>
       </div>
 
       <Link href="/vendor/products/new" className="w-fit rounded-md bg-primary px-4 py-2 text-sm text-white">
-        + เพิ่มสินค้าใหม่
+        + เพิ่มพระเครื่องใหม่
       </Link>
 
       <div className="flex flex-col gap-4">
-        {products.length === 0 && <p className="text-sm text-black/60">ยังไม่มีสินค้า</p>}
+        {products.length === 0 && <p className="text-sm text-black/60">ยังไม่มีพระเครื่อง</p>}
         {products.map((product) => (
           <div key={product.productId} className="flex items-center gap-4 rounded-lg border border-black/10 p-4">
             {product.images[0] ? (

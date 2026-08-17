@@ -27,14 +27,14 @@ export default async function VendorDashboardPage() {
         ยินดีต้อนรับ {vendor?.shopName}
         {vendor?.status === "suspended" && (
           <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs text-white">
-            บัญชีถูกระงับ — สินค้าจะไม่แสดงบนหน้าร้านจนกว่าแอดมินจะเปิดใช้งานอีกครั้ง
+            บัญชีถูกระงับ — พระเครื่องจะไม่แสดงบนหน้าร้านจนกว่าแอดมินจะเปิดใช้งานอีกครั้ง
           </span>
         )}
       </p>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border border-black/10 p-4">
-          <p className="text-sm text-black/60">สินค้าของฉัน</p>
+          <p className="text-sm text-black/60">พระเครื่องของฉัน</p>
           <p className="text-3xl font-semibold">{productCount}</p>
         </div>
         <div className="rounded-lg border border-black/10 p-4">
@@ -45,7 +45,7 @@ export default async function VendorDashboardPage() {
 
       <div className="flex flex-wrap gap-3">
         <Link href="/vendor/products" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
-          จัดการสินค้า
+          จัดการพระเครื่อง
         </Link>
         <Link href="/vendor/orders" className="w-fit rounded-md border border-black/20 px-4 py-2 text-sm">
           ออร์เดอร์ของฉัน
